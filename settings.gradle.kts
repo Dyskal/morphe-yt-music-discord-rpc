@@ -1,6 +1,7 @@
-rootProject.name = "morphe-patches-template"
+rootProject.name = "morphe-yt-music-discord-rpc"
 
 pluginManagement {
+    System.getenv("MORPHE_BUILD_DEPS")?.let { includeBuild("$it/patches-gradle-plugin") }
     repositories {
         gradlePluginPortal()
         google()
@@ -18,4 +19,19 @@ pluginManagement {
 
 plugins {
     id("app.morphe.patches") version "1.3.4"
+}
+
+settings {
+    extensions {
+        defaultNamespace = "app.dyskal.ytmrpc"
+        proguardFiles(rootProject.projectDir.resolve("extensions/proguard-rules.pro").toString())
+    }
+}
+
+System.getenv("MORPHE_BUILD_DEPS")?.let { dependencies ->
+    includeBuild("$dependencies/morphe-patcher") {
+        dependencySubstitution {
+            substitute(module("app.morphe:morphe-patcher")).using(project(":"))
+        }
+    }
 }

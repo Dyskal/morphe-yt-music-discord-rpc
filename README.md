@@ -1,91 +1,74 @@
-# 👋🧩 Morphe Patches template
+# Dyskal YouTube Music Discord RPC
 
-Template repository for Morphe Patches.
+Experimental standalone YouTube Music patch, **compatible with Morphe**, based on the [official patches template](https://github.com/MorpheApp/morphe-patches-template). This is Dyskal's project, not an official Morphe release.
 
-## ❓ About
+Implements the OAuth2 + PKCE approach suggested in [Morphe issue #810](https://github.com/MorpheApp/morphe-patches/issues/810). Like current Metrolist, it authenticates with the Social SDK presence scope over the Discord Gateway. It does not embed the native Social SDK or request an account token.
 
-Patches for apps I like.
+**Build and protocol tests pass; live Discord presence and real APK/device compatibility remain unverified.**
 
-<!-- TODO: Update this about section with a brief introduction/summary about this repo and what it offers. -->
+## Install
 
-### How to use these patches
+[Add this patch source to Morphe](https://morphe.software/add-source?github=Dyskal/morphe-yt-music-discord-rpc).
 
-Click here to add these patches to Morphe: https://morphe.software/add-source?github=xyz-user/xyz-patches
+Development releases are published from `dev`; enable prereleases in your patch-source settings. Select **Discord rich presence** when patching a supported YouTube Music APK. This bundle adds RPC only: use the official bundle for GmsCore, ad removal, and background playback as needed.
+
+## Discord setup
+
+1. Create your own application in the Discord Developer Portal.
+2. Enable Social SDK and public-client OAuth/PKCE. Your application must have access to `sdk.social_layer_presence`.
+3. Register exactly `ytmdiscord://oauth2/callback` as an OAuth2 redirect URI.
+4. Launch patched YouTube Music once, then long-press its launcher icon and select **Discord RPC**.
+5. Enter the public application ID and tap **Connect with Discord**. Authorize in the browser; returning enables sharing.
+6. Enable activity visibility in Discord, play music, and inspect presence from another account.
+
+The standalone settings screen replaces the earlier prototype's integration with the official bundle's Misc menu. If your launcher does not expose dynamic shortcuts, open it with:
+
+```text
+adb shell am start -n YOUR_MUSIC_PACKAGE/app.dyskal.ytmrpc.DiscordSettingsActivity
+```
+
+Only one installed copy should handle the callback scheme. Credentials and pending PKCE state are encrypted using Android Keystore AES-GCM. Disabling sharing retains login; **Disconnect and forget account** deletes credentials.
+
+## Behavior
+
+- Song title, artist, listening activity, progress at 1× playback speed, and a YouTube Music link when metadata supplies a video ID.
+- Clears on pause, buffering, stop, or track end. Rate-limited changes may take roughly five seconds.
+- Heartbeats, transient reconnects, latest-track replay, and token refresh on subsequent identification.
+- Disconnects after one minute without active playback.
+- Artwork resolution is not implemented.
 
 ## 🩹 Patches list
 
-<!-- PATCHES_START EXPANDED -->
-
-<!-- Do not modify this section by hand. The patch list is generated when release.yml creates a new release.
-     
-     If you wish for the patches list to be collapsed, then remove the word 'EXPANDED' from the comment tag above.
-
-     If you wish to manually keep this list updated then remove the PATCHES_START and PATCHES_END 
-     comment blocks entirely. -->
-
-#### A list of your patches will automatically be shown here after your first patches release is created.
-
-&nbsp;
-
-## 🚀 Getting development started
-
-To start using this template, follow these steps:
-
-1. [Setup](https://github.com/MorpheApp/morphe-documentation/blob/main/docs/morphe-development/README.md) your development environment including adding a GitHub PAT as described [here](https://github.com/MorpheApp/morphe-patcher/blob/main/docs/2_1_setup.md#-prepare-the-environment).
-2. [Create a new repository using this template](https://github.com/new?template_name=morphe-patches-template&template_owner=MorpheApp). Select create a new repository, and **enable 'Include all branches'** 
-3. Enable "Allow GitHub Actions to create and approve pull requests" in your repo Settings > Actions > General > Workflow permissions
-4. Update the [build.gradle.kts](patches/build.gradle.kts) file (Specifically, the 
-   [group of the project](patches/build.gradle.kts#L1), and the [About](patches/build.gradle.kts#L6-L11))
-5. Update the [README.md](README.md) file to be specific of your repo, and update the links in the [issue templates](.github/ISSUE_TEMPLATE).
-6. Choose a name for your patches project. Keep in mind you must use a name that does not 
-   imply authorship by the Morphe open source project. If unsure, then simply name these
-   patches after yourself ("UserXYZ Morphe patches"). See the [NOTICE](NOTICE) for details. 
-7. (Optional): Add `patches-bundle.png` to the project if you want a custom icon to show in
-   Morphe Manager instead of your GitHub profile avatar.
-
-🎉 You are now ready to start creating patches!
-
-## 🧑‍💻 Dev usage
-
-To develop and release your Patches using this template:
-
-- **Make all changes to the `dev` branch.**
-- For local development work build your patches using the gradle task `./gradlew buildAndroid` to generate the mpp file found in `patches/build/libs/patches-*.mpp`. Apply your patches locally using Morphe Desktop tool like any other patch bundle.
-- Always use [Semantic commit](https://kapeli.com/cheat_sheets/Semantic_Commits.docset/Contents/Resources/Documents/index) messages for commits. To keep it simple use only 3 commit message types: 
-  - `feat: Added a new feature`
-  - `fix: Some problem now fixed`
-  - `chore: Random change you do not want in the user facing changelog`
-- Commits of `fix:` and `feat:` will automatically generate new pre-releases and `chore:` will not create a new release.
-- Users can apply your dev branch releases by enabling `pre-release` in Morphe Manager patch sources.
-- When your dev branch is ready, and you want a stable release, merge dev branch to main (do not squash, and only merge).
-- **Always use semantic release (release.yml)**. Do not manually upload or create releases by hand
-  because many files must be updated and release.yml handles everything.
-
-## 🤓 Tips
-- See the [patcher documentation](https://github.com/MorpheApp/morphe-patcher/blob/main/docs/1_patcher_intro.md) for more examples of creating patches and fingerprints.
-- Do not use AI to create new release scripts. The `release.yml` here already handles everything.
-  If you need something custom with your releases then modify the existing `release.yml`
-  and `.releaserc` instead of writing everything new from scratch.
-- Do not manually edit or manually commit any generated files such as: `patches-list.json`,
-  `patches-bundle.json`, `CHANGELOG.md`.  These files will be automatically updated by `release.yml`.
-- Do not force push any semantic release commits as that will break all future releases.
-  If you need to fix a broken release, it's always easiest to create a new release instead of 
-  fixing an existing release.
-
-
-<!-- The patches end tag is intentionally placed here so the first release will clean up 
-     this readme of all developer instructions above. -->
+<!-- PATCHES_START -->
+The release workflow generates the patch list here.
 <!-- PATCHES_END -->
 
-### 🛠️ Building locally
+## Build and verify
 
-- Run `./gradlew buildAndroid`
-- The built patches .mpp file is found in `patches/build/libs/patches-*.mpp`
-- Patch the mpp file using [Morphe-Desktop](https://github.com/MorpheApp/morphe-desktop)
-  like any other patch bundle.
+Requirements: JDK 21, Android SDK platform/build tools 36, and GitHub Packages credentials with `read:packages`. Set `GITHUB_ACTOR`/`GITHUB_TOKEN`, or `gpr.user`/`gpr.key` in your user Gradle properties. Do not commit credentials.
 
-See the [Morphe documentation](https://github.com/MorpheApp/morphe-documentation) for more information.
+Alternatively, clone `MorpheApp/morphe-patches-gradle-plugin` at `v1.3.4` into `patches-gradle-plugin`, and `MorpheApp/morphe-patcher` at `v1.15.1` into `morphe-patcher`, under a common directory. Set `MORPHE_BUILD_DEPS` to that directory. This builds the matching dependencies from public source, as CI does; non-empty `GITHUB_ACTOR` and `GITHUB_TOKEN` placeholders still satisfy the plugin's repository configuration but are not used to retrieve those source-built modules.
 
-## 📜 License
+```powershell
+.\gradlew.bat :patches:buildAndroid :patches:test
+.\gradlew.bat -p verification/discord test
+```
 
-UserXYZ Patches are licensed under the [GNU General Public License v3.0](LICENSE)
+The bundle is `patches/build/libs/patches-*.mpp`. The protocol tests use local HTTP/WebSocket servers and compile the complete extension against Android 8/API 26 without upstream facades. The bundle test checks that R8 retains settings, callback, hooks, and the WebSocket implementation.
+
+Optional real-APK validation and unsigned output:
+
+```powershell
+.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk"
+.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PdiscordOutput=C:\existing-folder\music-discord-unsigned.apk"
+```
+
+Device checks still needed: browser return, actual visible presence, refresh, background playback, skips/seeks, pause/resume, network recovery, and disabling sharing. If OAuth identification is rejected, verify application scope/public-client setup before considering a personal-token fallback.
+
+## Development and releases
+
+Use `dev` for development and semantic commits (`feat:`, `fix:`, `chore:`). The template's existing `release.yml` and `.releaserc` generate releases, metadata, and changelogs. Merge `dev` into `main` when ready for a stable release; do not manually edit release-generated files.
+
+## License and attribution
+
+[GPLv3](LICENSE), with the additional terms in [NOTICE](NOTICE). Upstream MediaSession fingerprints retain their original copyright and [notice](UPSTREAM-NOTICE). Runtime dependencies and source references are documented in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

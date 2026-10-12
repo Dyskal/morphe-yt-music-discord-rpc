@@ -6,12 +6,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        # Patches template bug report
+        # YouTube Music Discord RPC bug report
 
         Before creating a new bug report, please keep the following in mind:
 
-        - **Do not submit a duplicate bug report**: Search for existing bug reports [here](https://github.com/TEMPLATE/template-patches-template/issues?q=label%3A%22Bug+report%22).
-        - **Review the contribution guidelines**: Make sure your bug report adheres to it. You can find the guidelines [here](https://github.com/TEMPLATE/template-patches-template/blob/main/CONTRIBUTING.md).
+        - Search for existing reports [here](https://github.com/Dyskal/morphe-yt-music-discord-rpc/issues).
+        - Include your Music version, Android version, patch release, and the connection status shown in RPC settings. Never include credentials.
   - type: textarea
     attributes:
       label: Bug description

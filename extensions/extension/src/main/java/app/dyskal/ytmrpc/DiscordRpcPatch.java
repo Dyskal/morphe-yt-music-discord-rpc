@@ -1,0 +1,242 @@
+package app.dyskal.ytmrpc;
+
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ShortcutInfo;
+import android.content.pm.ShortcutManager;
+import android.graphics.drawable.Icon;
+import android.media.MediaMetadata;
+import android.media.session.PlaybackState;
+import android.net.Uri;
+import android.os.SystemClock;
+import android.os.Handler;
+import android.os.Looper;
+
+import org.json.JSONObject;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+/** MediaSession supplies title, artist, duration and playback position even in background playback. */
+public final class DiscordRpcPatch {
+    private static final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor();
+    private static final Object credentialsLock = new Object();
+    private static volatile String status = "Not connected";
+    private static volatile MediaMetadata metadata;
+    private static volatile PlaybackState playback;
+    private static boolean initialized;
+    private static Context context;
+    private static DiscordGateway gateway;
+    private static volatile long connectionEpoch;
+    private static long idleSince;
+    private static String previousTrackKey;
+    private static long previousStart;
+
+    private DiscordRpcPatch() { }
+
+    public static void onSetMetadata(MediaMetadata value) {
+        metadata = value;
+    }
+
+    public static void onSetPlaybackState(PlaybackState value) {
+        playback = value;
+    }
+
+    /** Injected into MusicActivity.onCreate; no dependency on the official patches' extensions. */
+    public static synchronized void initialize(Context value) {
+        if (initialized) return;
+        context = value.getApplicationContext();
+        initialized = true;
+        runOnMainThread(() -> {
+            try {
+                ShortcutManager shortcuts = context.getSystemService(ShortcutManager.class);
+                if (shortcuts != null && !shortcuts.isRateLimitingActive()) {
+                    Intent settings = new Intent(context, DiscordSettingsActivity.class).setAction(Intent.ACTION_VIEW);
+                    ShortcutInfo shortcut = new ShortcutInfo.Builder(context, "dyskal_discord_rpc")
+                            .setShortLabel("Discord RPC").setLongLabel("Discord rich presence settings")
+                            .setIcon(Icon.createWithResource(context, android.R.drawable.ic_menu_manage))
+                            .setIntent(settings).setRank(0).build();
+                    shortcuts.addDynamicShortcuts(java.util.Collections.singletonList(shortcut));
+                }
+            } catch (Exception ignored) { /* A launcher without shortcut support can use the settings activity directly. */ }
+        });
+        worker.scheduleWithFixedDelay(() -> {
+            try { tick(); }
+            catch (Exception ignored) { status = "Discord presence unavailable; reconnect in settings"; }
+        }, 0, 1, TimeUnit.SECONDS);
+    }
+
+    public static String status() { return status; }
+
+    public static boolean isSharingEnabled() {
+        return context != null && context.getSharedPreferences("dyskal_discord_settings", Context.MODE_PRIVATE)
+                .getBoolean("enabled", false);
+    }
+
+    public static void setSharingEnabled(boolean enabled) {
+        if (context != null) context.getSharedPreferences("dyskal_discord_settings", Context.MODE_PRIVATE)
+                .edit().putBoolean("enabled", enabled).apply();
+    }
+
+    private static void runOnMainThread(Runnable action) {
+        new Handler(Looper.getMainLooper()).post(action);
+    }
+
+    public static String appId(Context context) {
+        synchronized (credentialsLock) {
+            try { return new DiscordTokenStore(context).read().optString("app_id"); }
+            catch (Exception ignored) { return ""; }
+        }
+    }
+
+    public static void authorize(Context context, String appId) {
+        worker.execute(() -> {
+            try {
+                String state = DiscordOAuth.randomSecret();
+                String verifier = DiscordOAuth.randomSecret();
+                String url = DiscordOAuth.authorizeUrl(appId.trim(), state, verifier);
+                synchronized (credentialsLock) {
+                    stopGateway();
+                    new DiscordTokenStore(context).write(new JSONObject().put("app_id", appId.trim())
+                            .put("state", state).put("verifier", verifier).put("pending_at", System.currentTimeMillis()));
+                }
+                status = "Waiting for Discord authorization";
+                runOnMainThread(() -> {
+                    try {
+                        context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    } catch (Exception ignored) { status = "Cannot open browser"; }
+                });
+            } catch (Exception ignored) { status = "Could not start OAuth. Check the application ID."; }
+        });
+    }
+
+    public static void callback(Context context, Uri uri) {
+        if (uri == null || !"ytmdiscord".equals(uri.getScheme()) || !"oauth2".equals(uri.getHost())
+                || !"/callback".equals(uri.getPath())) return;
+        worker.execute(() -> {
+            synchronized (credentialsLock) {
+                try {
+                    DiscordTokenStore store = new DiscordTokenStore(context);
+                    JSONObject pending = store.read();
+                    String expected = pending.optString("state");
+                    String actual = uri.getQueryParameter("state");
+                    long age = System.currentTimeMillis() - pending.optLong("pending_at");
+                    if (expected.isEmpty() || actual == null || age < 0 || age > 300_000
+                            || !java.security.MessageDigest.isEqual(expected.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                            actual.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+                        status = "OAuth callback rejected: expired or invalid state";
+                        return;
+                    }
+                    String appId = pending.getString("app_id");
+                    String verifier = pending.getString("verifier");
+                    // Consume once before contacting Discord; a duplicate callback cannot reuse it.
+                    store.write(new JSONObject().put("app_id", appId));
+                    String code = uri.getQueryParameter("code");
+                    if (code == null || uri.getQueryParameter("error") != null) {
+                        status = "Discord authorization cancelled";
+                        return;
+                    }
+                    JSONObject result = new DiscordOAuth().exchange(appId, code, verifier);
+                    saveTokens(store, appId, result, "");
+                    setSharingEnabled(true);
+                    status = "Authorized; play a track to share presence";
+                } catch (Exception ignored) { status = "OAuth failed. Check Social SDK and redirect configuration."; }
+            }
+        });
+    }
+
+    public static void disconnect(Context context) {
+        // Disable immediately so queued callbacks/ticks cannot reopen a connection.
+        setSharingEnabled(false);
+        worker.execute(() -> {
+            synchronized (credentialsLock) {
+                setSharingEnabled(false);
+                new DiscordTokenStore(context).clear();
+                stopGateway();
+                status = "Not connected";
+            }
+        });
+    }
+
+    private static void saveTokens(DiscordTokenStore store, String appId, JSONObject result, String oldRefresh) throws Exception {
+        store.write(new JSONObject().put("app_id", appId).put("access_token", result.getString("access_token"))
+                .put("refresh_token", result.optString("refresh_token", oldRefresh))
+                .put("expires_at", System.currentTimeMillis() + result.getLong("expires_in") * 1000));
+    }
+
+    private static String accessToken() throws Exception {
+        synchronized (credentialsLock) {
+            DiscordTokenStore store = new DiscordTokenStore(context);
+            JSONObject saved = store.read();
+            if (saved.optLong("expires_at") < System.currentTimeMillis() + 60_000) {
+                String refresh = saved.optString("refresh_token");
+                if (refresh.isEmpty()) throw new IllegalStateException("Reconnect required");
+                JSONObject result = new DiscordOAuth().refresh(saved.getString("app_id"), refresh);
+                saveTokens(store, saved.getString("app_id"), result, refresh);
+                return result.getString("access_token");
+            }
+            return saved.getString("access_token");
+        }
+    }
+
+    private static void tick() throws Exception {
+        if (!isSharingEnabled()) { stopGateway(); return; }
+        MediaMetadata track = metadata;
+        PlaybackState state = playback;
+        boolean playing = state != null && state.getState() == PlaybackState.STATE_PLAYING
+                && track != null && track.getString(MediaMetadata.METADATA_KEY_TITLE) != null;
+        long now = SystemClock.elapsedRealtime();
+        long duration = track == null ? 0 : track.getLong(MediaMetadata.METADATA_KEY_DURATION);
+        long position = state == null ? -1 : state.getPosition();
+        if (playing && position >= 0 && state.getLastPositionUpdateTime() > 0) {
+            position += (long) (Math.max(0, now - state.getLastPositionUpdateTime()) * state.getPlaybackSpeed());
+        }
+        if (duration > 0 && position >= duration) playing = false;
+        if (!playing) {
+            if (gateway != null) {
+                gateway.update(DiscordPresence.update(null), "clear");
+                if (idleSince == 0) idleSince = now;
+                if (now - idleSince > 60_000) stopGateway();
+            }
+            return;
+        }
+        idleSince = 0;
+        if (gateway == null) {
+            String appId;
+            synchronized (credentialsLock) {
+                JSONObject saved = new DiscordTokenStore(context).read();
+                if (saved.optString("access_token").isEmpty()) return;
+                appId = saved.getString("app_id");
+            }
+            long epoch = ++connectionEpoch;
+            gateway = new DiscordGateway(appId, DiscordRpcPatch::accessToken, value -> {
+                if (epoch == connectionEpoch) status = value;
+            });
+            gateway.start();
+        }
+        String title = track.getString(MediaMetadata.METADATA_KEY_TITLE);
+        String artist = track.getString(MediaMetadata.METADATA_KEY_ARTIST);
+        String id = track.getString(MediaMetadata.METADATA_KEY_MEDIA_ID);
+        long wallNow = System.currentTimeMillis();
+        JSONObject activity = DiscordPresence.track(appId(context), title, artist, id,
+                duration, position, state.getPlaybackSpeed(), wallNow);
+        String trackKey = title + '\n' + artist + '\n' + id + '\n' + duration + '\n' + state.getPlaybackSpeed();
+        long start = position < 0 ? -1 : wallNow - position;
+        if (!trackKey.equals(previousTrackKey) || Math.abs(start - previousStart) > 2000) {
+            previousTrackKey = trackKey;
+            previousStart = start;
+        }
+        String key = trackKey + '\n' + previousStart;
+        gateway.update(DiscordPresence.update(activity), key);
+    }
+
+    private static void stopGateway() {
+        if (gateway != null) {
+            ++connectionEpoch;
+            gateway.close(); gateway = null;
+            status = "Disconnected";
+        }
+        idleSince = 0;
+    }
+}
