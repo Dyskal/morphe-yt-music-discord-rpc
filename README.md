@@ -15,7 +15,7 @@ Development releases are published from `dev`; enable prereleases in your patch-
 ## Streamlined setup
 
 1. **Patch and install:** select **Discord rich presence** in Manager and leave its application-ID option at the default.
-2. **Connect once:** launch YouTube Music, then long-press its launcher icon → **Discord RPC** → **Connect with Discord**. Authorize in the browser; returning enables sharing automatically.
+2. **Connect once:** open YouTube Music → **Settings → Discord rich presence → Connect with Discord**. Authorize in the browser; returning enables sharing automatically.
 3. **Listen:** enable activity visibility in Discord and play music. Later playback automatically reconnects using the saved credentials.
 
 ### One-time setup for the application owner
@@ -24,11 +24,7 @@ In the Discord Developer Portal, application `1559278040175878146` must have Soc
 
 To use another application, configure it the same way and override **Discord rich presence → Patch options → Discord application ID** in Manager before patching.
 
-The standalone settings screen replaces the earlier prototype's integration with the official bundle's Misc menu. If your launcher does not expose dynamic shortcuts, open it with:
-
-```text
-adb shell am start -n YOUR_MUSIC_PACKAGE/me.dyskal.ytmrpc.DiscordSettingsActivity
-```
+The entry is added to YouTube Music's native settings page using the same intent-backed preference approach as the official settings patch. It opens this patch's login and sharing controls. An old dynamic launcher shortcut is removed when upgrading.
 
 Only one installed copy should handle the callback scheme. Credentials and pending PKCE state are encrypted using Android Keystore AES-GCM. Disabling sharing retains login; **Disconnect and forget account** deletes credentials.
 

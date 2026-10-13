@@ -10,7 +10,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-/** Standalone settings, launched by the dynamic app shortcut without upstream settings classes. */
+/** Login and sharing controls opened from YouTube Music's native settings screen. */
 public final class DiscordSettingsActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private CheckBox enabled;

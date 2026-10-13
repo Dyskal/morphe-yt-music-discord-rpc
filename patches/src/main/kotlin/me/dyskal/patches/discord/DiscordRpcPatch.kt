@@ -18,7 +18,7 @@ private val discordResourcesPatch = resourcePatch {
             val application = manifest.getElementsByTagName("application").item(0)
             val settings = manifest.createElement("activity").apply {
                 setAttribute("android:name", "me.dyskal.ytmrpc.DiscordSettingsActivity")
-                setAttribute("android:exported", "true")
+                setAttribute("android:exported", "false")
                 setAttribute("android:label", "Discord RPC settings")
                 setAttribute("android:theme", "@android:style/Theme.DeviceDefault")
             }
@@ -45,12 +45,19 @@ private val discordResourcesPatch = resourcePatch {
             application.appendChild(activity)
         }
     }
+
+    finalize {
+        // Like the official settings patch, use Music's native settings_headers preference screen.
+        // Read the manifest after execution so GmsCore/clone patches' package changes are reflected.
+        val packageName = document("AndroidManifest.xml").use { it.documentElement.getAttribute("package") }
+        document("res/xml/settings_headers.xml").use { addDiscordSettingsPreference(it, packageName) }
+    }
 }
 
 @Suppress("unused")
 val discordRpcPatch = bytecodePatch(
     name = "Discord rich presence",
-    description = "Shares music on Discord with OAuth2 + PKCE. Uses Dyskal's Discord application by default; sign in using the Discord RPC app shortcut.",
+    description = "Shares music on Discord with OAuth2 + PKCE. Uses Dyskal's Discord application by default; sign in from YouTube Music Settings → Discord rich presence.",
     default = true
 ) {
     val applicationId = stringOption(

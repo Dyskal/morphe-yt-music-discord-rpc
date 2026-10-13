@@ -2,9 +2,7 @@ package me.dyskal.ytmrpc;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
-import android.graphics.drawable.Icon;
 import android.media.MediaMetadata;
 import android.media.session.PlaybackState;
 import android.net.Uri;
@@ -54,15 +52,9 @@ public final class DiscordRpcPatch {
         runOnMainThread(() -> {
             try {
                 ShortcutManager shortcuts = context.getSystemService(ShortcutManager.class);
-                if (shortcuts != null && !shortcuts.isRateLimitingActive()) {
-                    Intent settings = new Intent(context, DiscordSettingsActivity.class).setAction(Intent.ACTION_VIEW);
-                    ShortcutInfo shortcut = new ShortcutInfo.Builder(context, "dyskal_discord_rpc")
-                            .setShortLabel("Discord RPC").setLongLabel("Discord rich presence settings")
-                            .setIcon(Icon.createWithResource(context, android.R.drawable.ic_menu_manage))
-                            .setIntent(settings).setRank(0).build();
-                    shortcuts.addDynamicShortcuts(java.util.Collections.singletonList(shortcut));
-                }
-            } catch (Exception ignored) { /* A launcher without shortcut support can use the settings activity directly. */ }
+                // Remove the old entry for users upgrading from the launcher-shortcut implementation.
+                if (shortcuts != null) shortcuts.removeDynamicShortcuts(java.util.Collections.singletonList("dyskal_discord_rpc"));
+            } catch (Exception ignored) { }
         });
         worker.execute(() -> {
             synchronized (credentialsLock) {
