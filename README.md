@@ -10,16 +10,19 @@ Implements the OAuth2 + PKCE approach suggested in [Morphe issue #810](https://g
 
 [Add this patch source to Morphe](https://morphe.software/add-source?github=Dyskal/morphe-yt-music-discord-rpc).
 
-Development releases are published from `dev`; enable prereleases in your patch-source settings. Select **Discord rich presence** when patching a supported YouTube Music APK and set its required **Discord application ID** option in Manager. This bundle adds RPC only: use the official bundle for GmsCore, ad removal, and background playback as needed.
+Development releases are published from `dev`; enable prereleases in your patch-source settings. Select **Discord rich presence** when patching a supported YouTube Music APK. Its **Discord application ID** option defaults to Dyskal's application, `1559278040175878146`; no manual ID entry is needed. This bundle adds RPC only: use the official bundle for GmsCore, ad removal, and background playback as needed.
 
-## Discord setup
+## Streamlined setup
 
-1. Create your own application in the Discord Developer Portal.
-2. Enable Social SDK and public-client OAuth/PKCE. Your application must have access to `sdk.social_layer_presence`.
-3. Register exactly `ytmdiscord://oauth2/callback` as an OAuth2 redirect URI.
-4. In Morphe Manager, open **Discord rich presence → Patch options → Discord application ID**, enter your public application ID (17–20 digits), then patch and install YouTube Music.
-5. Launch patched YouTube Music once, then long-press its launcher icon → **Discord RPC** → **Connect with Discord**. Authorize in the browser; returning enables sharing.
-6. Enable activity visibility in Discord, play music, and inspect presence from another account.
+1. **Patch and install:** select **Discord rich presence** in Manager and leave its application-ID option at the default.
+2. **Connect once:** launch YouTube Music, then long-press its launcher icon → **Discord RPC** → **Connect with Discord**. Authorize in the browser; returning enables sharing automatically.
+3. **Listen:** enable activity visibility in Discord and play music. Later playback automatically reconnects using the saved credentials.
+
+### One-time setup for the application owner
+
+In the Discord Developer Portal, application `1559278040175878146` must have Social SDK/public-client OAuth enabled, access to `sdk.social_layer_presence`, and exactly `ytmdiscord://oauth2/callback` registered as an OAuth2 redirect URI. Users of the default application do not need to create their own Discord application.
+
+To use another application, configure it the same way and override **Discord rich presence → Patch options → Discord application ID** in Manager before patching.
 
 The standalone settings screen replaces the earlier prototype's integration with the official bundle's Misc menu. If your launcher does not expose dynamic shortcuts, open it with:
 

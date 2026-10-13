@@ -36,12 +36,15 @@ class DiscordBundleTest {
     }
 
     @Test
-    fun `Manager option is required and rejects malformed application IDs`() {
+    fun `Manager option defaults to Dyskal application and rejects malformed overrides`() {
         val option = discordRpcPatch.options["discordApplicationId"]
         option.reset()
         try {
             assertTrue(option.required)
-            assertFailsWith<OptionException.ValueRequiredException> { option.value }
+            assertEquals("1559278040175878146", option.value)
+            assertFailsWith<OptionException.ValueRequiredException> {
+                discordRpcPatch.options.set<String>("discordApplicationId", null)
+            }
             for (invalid in listOf("", "123", "123456789012345678901", "12345678901234567\"", "not-an-id")) {
                 assertFailsWith<OptionException.ValueValidationException> {
                     discordRpcPatch.options["discordApplicationId"] = invalid
@@ -60,9 +63,10 @@ class DiscordBundleTest {
         val getter = dex.classes.single { it.type == "Lme/dyskal/ytmrpc/DiscordRpcPatch;" }
             .methods.single { it.name == "getApplicationId" }
         val method = MutableMethod(getter)
-        embedDiscordApplicationId(method, "123456789012345678")
+        val defaultAppId = discordRpcPatch.options["discordApplicationId"].default as String
+        embedDiscordApplicationId(method, defaultAppId)
         val instructions = method.implementation!!.instructions.toList()
-        assertEquals("123456789012345678", ((instructions[0] as ReferenceInstruction).reference as StringReference).string)
+        assertEquals(defaultAppId, ((instructions[0] as ReferenceInstruction).reference as StringReference).string)
         assertEquals(Opcode.RETURN_OBJECT, instructions[1].opcode)
         assertFailsWith<IllegalArgumentException> { embedDiscordApplicationId(method, "invalid") }
     }

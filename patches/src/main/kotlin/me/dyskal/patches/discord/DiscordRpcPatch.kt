@@ -50,13 +50,14 @@ private val discordResourcesPatch = resourcePatch {
 @Suppress("unused")
 val discordRpcPatch = bytecodePatch(
     name = "Discord rich presence",
-    description = "Shares music on Discord with OAuth2 + PKCE. Set your Discord application ID in patch options, then sign in using the Discord RPC app shortcut.",
+    description = "Shares music on Discord with OAuth2 + PKCE. Uses Dyskal's Discord application by default; sign in using the Discord RPC app shortcut.",
     default = true
 ) {
     val applicationId = stringOption(
         key = "discordApplicationId",
+        default = "1559278040175878146",
         title = "Discord application ID",
-        description = "Public application ID from the Discord Developer Portal (17–20 digits). Enable Social SDK/public-client OAuth and register ytmdiscord://oauth2/callback. Changing this ID requires repatching and signing in again.",
+        description = "Defaults to Dyskal's Discord application. Override with your own public application ID (17–20 digits) if needed. Custom applications need Social SDK/public-client OAuth and the redirect ytmdiscord://oauth2/callback. Changing this ID requires repatching and signing in again.",
         required = true
     ) { it != null && it.matches(Regex("[0-9]{17,20}")) }
 
