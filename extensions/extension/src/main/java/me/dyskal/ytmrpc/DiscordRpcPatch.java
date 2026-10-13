@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 /** MediaSession supplies title, artist, duration and playback position even in background playback. */
 public final class DiscordRpcPatch {
+    public static final String DEFAULT_APPLICATION_ID = "1559278040175878146";
     private static final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor();
     private static final Object credentialsLock = new Object();
     private static volatile String status = "Not connected";
@@ -32,8 +33,11 @@ public final class DiscordRpcPatch {
 
     private DiscordRpcPatch() { }
 
-    /** Replaced by the patch with the application ID entered in Morphe Manager. */
-    public static String getApplicationId() { return ""; }
+    public static String getApplicationId() {
+        return context == null ? DEFAULT_APPLICATION_ID
+                : context.getSharedPreferences("dyskal_discord_settings", Context.MODE_PRIVATE)
+                        .getString("application_id", DEFAULT_APPLICATION_ID);
+    }
 
     public static void onSetMetadata(MediaMetadata value) {
         metadata = value;
@@ -48,19 +52,6 @@ public final class DiscordRpcPatch {
         if (initialized) return;
         context = value.getApplicationContext();
         initialized = true;
-        worker.execute(() -> {
-            synchronized (credentialsLock) {
-                try {
-                    DiscordTokenStore store = new DiscordTokenStore(context);
-                    String savedAppId = store.read().optString("app_id");
-                    if (!savedAppId.isEmpty() && !savedAppId.equals(getApplicationId())) {
-                        store.clear();
-                        setSharingEnabled(false);
-                        status = "Application ID changed; sign in to Discord again";
-                    }
-                } catch (Exception ignored) { status = "Could not load Discord connection; reconnect in settings"; }
-            }
-        });
         worker.scheduleWithFixedDelay(() -> {
             try { tick(); }
             catch (Exception ignored) { status = "Discord presence unavailable; reconnect in settings"; }
@@ -83,15 +74,20 @@ public final class DiscordRpcPatch {
         new Handler(Looper.getMainLooper()).post(action);
     }
 
-    public static void authorize(Context context) {
+    /** Connect saves the selected application ID and starts a fresh authorization for it. */
+    public static void authorize(Context context, String applicationId) {
         worker.execute(() -> {
             try {
-                String appId = getApplicationId();
+                String appId = applicationId.trim();
                 String state = DiscordOAuth.randomSecret();
                 String verifier = DiscordOAuth.randomSecret();
                 String url = DiscordOAuth.authorizeUrl(appId, state, verifier);
                 synchronized (credentialsLock) {
                     stopGateway();
+                    setSharingEnabled(false);
+                    context.getSharedPreferences("dyskal_discord_settings", Context.MODE_PRIVATE)
+                            .edit().putString("application_id", appId).apply();
+                    // Replaces any credentials or pending authorization belonging to the old application.
                     new DiscordTokenStore(context).write(new JSONObject().put("app_id", appId)
                             .put("state", state).put("verifier", verifier).put("pending_at", System.currentTimeMillis()));
                 }
@@ -101,7 +97,7 @@ public final class DiscordRpcPatch {
                         context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                     } catch (Exception ignored) { status = "Cannot open browser"; }
                 });
-            } catch (Exception ignored) { status = "Could not start OAuth. Check the application ID in Manager and repatch."; }
+            } catch (Exception ignored) { status = "Could not start OAuth. Check the application ID in Discord settings."; }
         });
     }
 

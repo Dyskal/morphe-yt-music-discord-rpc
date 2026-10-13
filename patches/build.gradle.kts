@@ -40,9 +40,7 @@ tasks {
         doFirst {
             val apk = providers.gradleProperty("discordApk").orNull
                 ?: throw GradleException("Requires -PdiscordApk=/absolute/path/to/music.apk")
-            val appId = providers.gradleProperty("discordApplicationId").orNull
-                ?: throw GradleException("Requires -PdiscordApplicationId=<public Discord application ID>")
-            setArgs(listOfNotNull(apk, appId, providers.gradleProperty("discordOutput").orNull))
+            setArgs(listOfNotNull(apk, providers.gradleProperty("discordOutput").orNull))
         }
     }
     register<JavaExec>("generatePatchesList") {

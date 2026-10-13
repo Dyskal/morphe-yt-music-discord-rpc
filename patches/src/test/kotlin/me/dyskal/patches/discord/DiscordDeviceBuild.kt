@@ -10,11 +10,10 @@ import java.nio.file.Files
 
 /** Optional real-APK check. This bundle adds RPC only; apply official playback/GmsCore patches separately. */
 fun main(arguments: Array<String>) {
-    require(arguments.size in 2..3) { "Usage: DiscordDeviceBuildKt <input-apk> <Discord-application-ID> [unsigned-output-apk]" }
+    require(arguments.size in 1..2) { "Usage: DiscordDeviceBuildKt <input-apk> [unsigned-output-apk]" }
     val input = File(arguments[0]).canonicalFile
     require(input.isFile) { "Input APK does not exist: $input" }
-    discordRpcPatch.options["discordApplicationId"] = arguments[1]
-    val output = arguments.getOrNull(2)?.let(::File)?.canonicalFile
+    val output = arguments.getOrNull(1)?.let(::File)?.canonicalFile
     output?.let { require(it.parentFile.isDirectory) { "Output directory must exist: ${it.parent}" } }
     val sdk = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
         ?: error("Set ANDROID_HOME for SDK DEX verification")

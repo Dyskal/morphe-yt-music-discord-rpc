@@ -10,13 +10,6 @@ package me.dyskal.patches.discord
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.methodCall
 
-internal object DiscordApplicationIdFingerprint : Fingerprint(
-    definingClass = "Lme/dyskal/ytmrpc/DiscordRpcPatch;",
-    name = "getApplicationId",
-    returnType = "Ljava/lang/String;",
-    parameters = listOf()
-)
-
 internal object MusicActivityOnCreateFingerprint : Fingerprint(
     definingClass = "Lcom/google/android/apps/youtube/music/activities/MusicActivity;",
     name = "onCreate",

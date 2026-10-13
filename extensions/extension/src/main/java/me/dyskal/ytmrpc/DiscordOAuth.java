@@ -31,8 +31,12 @@ public final class DiscordOAuth {
                 MessageDigest.getInstance("SHA-256").digest(verifier.getBytes(StandardCharsets.US_ASCII)));
     }
 
+    public static boolean isValidApplicationId(String appId) {
+        return appId != null && appId.matches("[0-9]{17,20}");
+    }
+
     public static String authorizeUrl(String appId, String state, String verifier) throws Exception {
-        if (!appId.matches("[0-9]{17,20}")) throw new IOException("Invalid Discord application ID");
+        if (!isValidApplicationId(appId)) throw new IOException("Invalid Discord application ID");
         return "https://discord.com/oauth2/authorize?client_id=" + appId
                 + "&response_type=code&redirect_uri=" + encode(REDIRECT_URI)
                 + "&scope=" + encode(SCOPES) + "&state=" + encode(state)

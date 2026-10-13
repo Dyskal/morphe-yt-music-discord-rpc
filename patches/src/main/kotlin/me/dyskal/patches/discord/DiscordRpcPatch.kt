@@ -7,7 +7,6 @@ import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.patch.Compatibility
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
-import app.morphe.patcher.patch.stringOption
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 
 private const val EXTENSION_CLASS = "Lme/dyskal/ytmrpc/DiscordRpcPatch;"
@@ -60,14 +59,6 @@ val discordRpcPatch = bytecodePatch(
     description = "Shares music on Discord with OAuth2 + PKCE. Uses Dyskal's Discord application by default; sign in from YouTube Music Settings → Discord rich presence.",
     default = true
 ) {
-    val applicationId = stringOption(
-        key = "discordApplicationId",
-        default = "1559278040175878146",
-        title = "Discord application ID",
-        description = "Defaults to Dyskal's Discord application. Override with your own public application ID (17–20 digits) if needed. Custom applications need Social SDK/public-client OAuth and the redirect ytmdiscord://oauth2/callback. Changing this ID requires repatching and signing in again.",
-        required = true
-    ) { it != null && it.matches(Regex("[0-9]{17,20}")) }
-
     dependsOn(discordResourcesPatch)
     compatibleWith(Compatibility(
         name = "YouTube Music",
@@ -80,7 +71,6 @@ val discordRpcPatch = bytecodePatch(
     ))
     extendWith("extensions/discord.mpe")
     execute {
-        embedDiscordApplicationId(DiscordApplicationIdFingerprint.method, applicationId.value!!)
         MusicActivityOnCreateFingerprint.method.addInstruction(
             0, "invoke-static/range {p0 .. p0}, $EXTENSION_CLASS->initialize(Landroid/content/Context;)V"
         )

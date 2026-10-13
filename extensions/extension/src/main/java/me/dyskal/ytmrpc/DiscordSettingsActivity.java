@@ -4,8 +4,10 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -36,9 +38,19 @@ public final class DiscordSettingsActivity extends Activity {
         setContentView(scroll);
 
         TextView instructions = new TextView(this);
-        instructions.setText("Your Discord application ID is configured in Morphe Manager's patch options. "
-                + "Tap Connect to authorize Discord. Changing the application ID requires repatching.");
+        instructions.setText("The default application is ready to use. Tap Connect to authorize Discord. "
+                + "To use your own application, change the ID below and tap Connect to save it and sign in again.");
         content.addView(instructions);
+
+        TextView appIdLabel = new TextView(this);
+        appIdLabel.setText("Discord application ID");
+        content.addView(appIdLabel);
+        EditText appId = new EditText(this);
+        appId.setHint("17–20 digit application ID");
+        appId.setSingleLine(true);
+        appId.setInputType(InputType.TYPE_CLASS_NUMBER);
+        appId.setText(DiscordRpcPatch.getApplicationId());
+        content.addView(appId);
 
         enabled = new CheckBox(this);
         enabled.setText("Share currently playing music");
@@ -48,7 +60,15 @@ public final class DiscordSettingsActivity extends Activity {
 
         Button connect = new Button(this);
         connect.setText("Connect with Discord");
-        connect.setOnClickListener(view -> DiscordRpcPatch.authorize(getApplicationContext()));
+        connect.setOnClickListener(view -> {
+            String id = appId.getText().toString().trim();
+            if (!DiscordOAuth.isValidApplicationId(id)) {
+                appId.setError("Enter a valid 17–20 digit Discord application ID");
+                return;
+            }
+            appId.setError(null);
+            DiscordRpcPatch.authorize(getApplicationContext(), id);
+        });
         content.addView(connect);
 
         Button disconnect = new Button(this);

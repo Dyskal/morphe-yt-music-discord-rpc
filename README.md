@@ -10,11 +10,11 @@ Implements the OAuth2 + PKCE approach suggested in [Morphe issue #810](https://g
 
 [Add this patch source to Morphe](https://morphe.software/add-source?github=Dyskal/morphe-yt-music-discord-rpc).
 
-Development releases are published from `dev`; enable prereleases in your patch-source settings. Select **Discord rich presence** when patching a supported YouTube Music APK. Its **Discord application ID** option defaults to Dyskal's application, `1559278040175878146`; no manual ID entry is needed. This bundle adds RPC only: use the official bundle for GmsCore, ad removal, and background playback as needed.
+Development releases are published from `dev`; enable prereleases in your patch-source settings. Select **Discord rich presence** when patching a supported YouTube Music APK. The in-app **Discord application ID** field defaults to Dyskal's application, `1559278040175878146`; no manual ID entry is needed. This bundle adds RPC only: use the official bundle for GmsCore, ad removal, and background playback as needed.
 
 ## Streamlined setup
 
-1. **Patch and install:** select **Discord rich presence** in Manager and leave its application-ID option at the default.
+1. **Patch and install:** select **Discord rich presence** in Manager.
 2. **Connect once:** open YouTube Music → **Settings → Discord rich presence → Connect with Discord**. Authorize in the browser; returning enables sharing automatically.
 3. **Listen:** enable activity visibility in Discord and play music. Later playback automatically reconnects using the saved credentials.
 
@@ -22,13 +22,13 @@ Development releases are published from `dev`; enable prereleases in your patch-
 
 In the Discord Developer Portal, application `1559278040175878146` must have Social SDK/public-client OAuth enabled, access to `sdk.social_layer_presence`, and exactly `ytmdiscord://oauth2/callback` registered as an OAuth2 redirect URI. Users of the default application do not need to create their own Discord application.
 
-To use another application, configure it the same way and override **Discord rich presence → Patch options → Discord application ID** in Manager before patching.
+To use another application, configure it the same way and enter its ID in **YouTube Music → Settings → Discord rich presence → Discord application ID**. Tap **Connect with Discord** to save the ID and authorize that application.
 
 The entry is added to YouTube Music's native settings page using the same intent-backed preference approach as the official settings patch. It opens this patch's login and sharing controls.
 
 Only one installed copy should handle the callback scheme. Credentials and pending PKCE state are encrypted using Android Keystore AES-GCM. Disabling sharing retains login; **Disconnect and forget account** deletes credentials.
 
-The application ID is embedded at patch time and is not editable in the app. Changing it requires repatching; credentials from the previous Discord application are cleared on startup and you must sign in again.
+The application ID is stored in ordinary app preferences. No repatching is needed to change it. Connecting saves the selected ID, disconnects the current presence, and replaces the credentials with a fresh authorization for that application.
 
 ## Behavior
 
@@ -74,8 +74,8 @@ The bundle is `patches/build/libs/patches-*.mpp`. The bundle test checks that R8
 Optional real-APK validation and unsigned output:
 
 ```powershell
-.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PdiscordApplicationId=YOUR_APPLICATION_ID"
-.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PdiscordApplicationId=YOUR_APPLICATION_ID" "-PdiscordOutput=C:\existing-folder\music-discord-unsigned.apk"
+.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk"
+.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PdiscordOutput=C:\existing-folder\music-discord-unsigned.apk"
 ```
 
 Device checks still needed: browser return, actual visible presence, refresh, background playback, skips/seeks, pause/resume, network recovery, and disabling sharing. If OAuth identification is rejected, verify application scope/public-client setup before considering a personal-token fallback.

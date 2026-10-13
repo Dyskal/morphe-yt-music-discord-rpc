@@ -2,17 +2,12 @@ package me.dyskal.patches.discord
 
 import com.android.tools.smali.dexlib2.Opcodes
 import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile
-import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-import com.android.tools.smali.dexlib2.iface.reference.StringReference
-import app.morphe.patcher.patch.OptionException
-import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
 import java.nio.ByteBuffer
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class DiscordBundleTest {
     @Test
@@ -36,38 +31,13 @@ class DiscordBundleTest {
     }
 
     @Test
-    fun `Manager option defaults to Dyskal application and rejects malformed overrides`() {
-        val option = discordRpcPatch.options["discordApplicationId"]
-        option.reset()
-        try {
-            assertTrue(option.required)
-            assertEquals("1559278040175878146", option.value)
-            assertFailsWith<OptionException.ValueRequiredException> {
-                discordRpcPatch.options.set<String>("discordApplicationId", null)
-            }
-            for (invalid in listOf("", "123", "123456789012345678901", "12345678901234567\"", "not-an-id")) {
-                assertFailsWith<OptionException.ValueValidationException> {
-                    discordRpcPatch.options["discordApplicationId"] = invalid
-                }
-            }
-            discordRpcPatch.options["discordApplicationId"] = "123456789012345678"
-            assertEquals("123456789012345678", option.value)
-        } finally { option.reset() }
-    }
-
-    @Test
-    fun `Manager application ID is embedded into the actual R8 packaged getter`() {
+    fun `application ID is configured at runtime with the packaged Dyskal default`() {
+        assertTrue(discordRpcPatch.options.isEmpty(), "The application ID must not require a Manager option")
         val stream = javaClass.classLoader.getResourceAsStream("extensions/discord.mpe")
         assertNotNull(stream)
         val dex = stream.use { DexBackedDexFile(Opcodes.getDefault(), ByteBuffer.wrap(it.readBytes())) }
-        val getter = dex.classes.single { it.type == "Lme/dyskal/ytmrpc/DiscordRpcPatch;" }
-            .methods.single { it.name == "getApplicationId" }
-        val method = MutableMethod(getter)
-        val defaultAppId = discordRpcPatch.options["discordApplicationId"].default as String
-        embedDiscordApplicationId(method, defaultAppId)
-        val instructions = method.implementation!!.instructions.toList()
-        assertEquals(defaultAppId, ((instructions[0] as ReferenceInstruction).reference as StringReference).string)
-        assertEquals(Opcode.RETURN_OBJECT, instructions[1].opcode)
-        assertFailsWith<IllegalArgumentException> { embedDiscordApplicationId(method, "invalid") }
+        val runtime = dex.classes.single { it.type == "Lme/dyskal/ytmrpc/DiscordRpcPatch;" }
+        val defaultId = runtime.fields.single { it.name == "DEFAULT_APPLICATION_ID" }.initialValue as StringEncodedValue
+        assertEquals("1559278040175878146", defaultId.value)
     }
 }
