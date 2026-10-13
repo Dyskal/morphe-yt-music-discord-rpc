@@ -2,7 +2,6 @@ package me.dyskal.ytmrpc;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ShortcutManager;
 import android.media.MediaMetadata;
 import android.media.session.PlaybackState;
 import android.net.Uri;
@@ -49,13 +48,6 @@ public final class DiscordRpcPatch {
         if (initialized) return;
         context = value.getApplicationContext();
         initialized = true;
-        runOnMainThread(() -> {
-            try {
-                ShortcutManager shortcuts = context.getSystemService(ShortcutManager.class);
-                // Remove the old entry for users upgrading from the launcher-shortcut implementation.
-                if (shortcuts != null) shortcuts.removeDynamicShortcuts(java.util.Collections.singletonList("dyskal_discord_rpc"));
-            } catch (Exception ignored) { }
-        });
         worker.execute(() -> {
             synchronized (credentialsLock) {
                 try {

@@ -24,7 +24,7 @@ In the Discord Developer Portal, application `1559278040175878146` must have Soc
 
 To use another application, configure it the same way and override **Discord rich presence → Patch options → Discord application ID** in Manager before patching.
 
-The entry is added to YouTube Music's native settings page using the same intent-backed preference approach as the official settings patch. It opens this patch's login and sharing controls. An old dynamic launcher shortcut is removed when upgrading.
+The entry is added to YouTube Music's native settings page using the same intent-backed preference approach as the official settings patch. It opens this patch's login and sharing controls.
 
 Only one installed copy should handle the callback scheme. Credentials and pending PKCE state are encrypted using Android Keystore AES-GCM. Disabling sharing retains login; **Disconnect and forget account** deletes credentials.
 
