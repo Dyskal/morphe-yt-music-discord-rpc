@@ -10,24 +10,26 @@ Implements the OAuth2 + PKCE approach suggested in [Morphe issue #810](https://g
 
 [Add this patch source to Morphe](https://morphe.software/add-source?github=Dyskal/morphe-yt-music-discord-rpc).
 
-Development releases are published from `dev`; enable prereleases in your patch-source settings. Select **Discord rich presence** when patching a supported YouTube Music APK. This bundle adds RPC only: use the official bundle for GmsCore, ad removal, and background playback as needed.
+Development releases are published from `dev`; enable prereleases in your patch-source settings. Select **Discord rich presence** when patching a supported YouTube Music APK and set its required **Discord application ID** option in Manager. This bundle adds RPC only: use the official bundle for GmsCore, ad removal, and background playback as needed.
 
 ## Discord setup
 
 1. Create your own application in the Discord Developer Portal.
 2. Enable Social SDK and public-client OAuth/PKCE. Your application must have access to `sdk.social_layer_presence`.
 3. Register exactly `ytmdiscord://oauth2/callback` as an OAuth2 redirect URI.
-4. Launch patched YouTube Music once, then long-press its launcher icon and select **Discord RPC**.
-5. Enter the public application ID and tap **Connect with Discord**. Authorize in the browser; returning enables sharing.
+4. In Morphe Manager, open **Discord rich presence → Patch options → Discord application ID**, enter your public application ID (17–20 digits), then patch and install YouTube Music.
+5. Launch patched YouTube Music once, then long-press its launcher icon → **Discord RPC** → **Connect with Discord**. Authorize in the browser; returning enables sharing.
 6. Enable activity visibility in Discord, play music, and inspect presence from another account.
 
 The standalone settings screen replaces the earlier prototype's integration with the official bundle's Misc menu. If your launcher does not expose dynamic shortcuts, open it with:
 
 ```text
-adb shell am start -n YOUR_MUSIC_PACKAGE/app.dyskal.ytmrpc.DiscordSettingsActivity
+adb shell am start -n YOUR_MUSIC_PACKAGE/me.dyskal.ytmrpc.DiscordSettingsActivity
 ```
 
 Only one installed copy should handle the callback scheme. Credentials and pending PKCE state are encrypted using Android Keystore AES-GCM. Disabling sharing retains login; **Disconnect and forget account** deletes credentials.
+
+The application ID is embedded at patch time and is not editable in the app. Changing it requires repatching; credentials from the previous Discord application are cleared on startup and you must sign in again.
 
 ## Behavior
 
@@ -62,20 +64,19 @@ Only one installed copy should handle the callback scheme. Credentials and pendi
 
 Requirements: JDK 21, Android SDK platform/build tools 36, and GitHub Packages credentials with `read:packages`. Set `GITHUB_ACTOR`/`GITHUB_TOKEN`, or `gpr.user`/`gpr.key` in your user Gradle properties. Do not commit credentials.
 
-Alternatively, clone `MorpheApp/morphe-patches-gradle-plugin` at `v1.3.4` into `patches-gradle-plugin`, and `MorpheApp/morphe-patcher` at `v1.15.1` into `morphe-patcher`, under a common directory. Set `MORPHE_BUILD_DEPS` to that directory. This builds the matching dependencies from public source, as CI does; non-empty `GITHUB_ACTOR` and `GITHUB_TOKEN` placeholders still satisfy the plugin's repository configuration but are not used to retrieve those source-built modules.
+CI uses the workflow's built-in `GITHUB_TOKEN` to download published dependencies from GitHub Packages, following the official template.
 
 ```powershell
 .\gradlew.bat :patches:buildAndroid :patches:test
-.\gradlew.bat -p verification/discord test
 ```
 
-The bundle is `patches/build/libs/patches-*.mpp`. The protocol tests use local HTTP/WebSocket servers and compile the complete extension against Android 8/API 26 without upstream facades. The bundle test checks that R8 retains settings, callback, hooks, and the WebSocket implementation.
+The bundle is `patches/build/libs/patches-*.mpp`. The bundle test checks that R8 retains settings, callback, hooks, and the WebSocket implementation.
 
 Optional real-APK validation and unsigned output:
 
 ```powershell
-.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk"
-.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PdiscordOutput=C:\existing-folder\music-discord-unsigned.apk"
+.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PdiscordApplicationId=YOUR_APPLICATION_ID"
+.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PdiscordApplicationId=YOUR_APPLICATION_ID" "-PdiscordOutput=C:\existing-folder\music-discord-unsigned.apk"
 ```
 
 Device checks still needed: browser return, actual visible presence, refresh, background playback, skips/seeks, pause/resume, network recovery, and disabling sharing. If OAuth identification is rejected, verify application scope/public-client setup before considering a personal-token fallback.

@@ -1,13 +1,11 @@
-package app.dyskal.ytmrpc;
+package me.dyskal.ytmrpc;
 
 import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.InputType;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -38,17 +36,9 @@ public final class DiscordSettingsActivity extends Activity {
         setContentView(scroll);
 
         TextView instructions = new TextView(this);
-        instructions.setText("Enable Social SDK and public-client OAuth/PKCE for your Discord application. "
-                + "Register ytmdiscord://oauth2/callback as an OAuth2 redirect. Enter the public application ID below. "
-                + "No client secret or account token is needed.");
+        instructions.setText("Your Discord application ID is configured in Morphe Manager's patch options. "
+                + "Tap Connect to authorize Discord. Changing the application ID requires repatching.");
         content.addView(instructions);
-
-        EditText appId = new EditText(this);
-        appId.setHint("Discord application ID");
-        appId.setSingleLine(true);
-        appId.setInputType(InputType.TYPE_CLASS_NUMBER);
-        appId.setText(DiscordRpcPatch.appId(this));
-        content.addView(appId);
 
         enabled = new CheckBox(this);
         enabled.setText("Share currently playing music");
@@ -58,7 +48,7 @@ public final class DiscordSettingsActivity extends Activity {
 
         Button connect = new Button(this);
         connect.setText("Connect with Discord");
-        connect.setOnClickListener(view -> DiscordRpcPatch.authorize(getApplicationContext(), appId.getText().toString()));
+        connect.setOnClickListener(view -> DiscordRpcPatch.authorize(getApplicationContext()));
         content.addView(connect);
 
         Button disconnect = new Button(this);

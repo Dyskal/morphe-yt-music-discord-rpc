@@ -1,4 +1,4 @@
-package app.dyskal.ytmrpc;
+package me.dyskal.ytmrpc;
 
 import android.content.Context;
 import android.content.SharedPreferences;

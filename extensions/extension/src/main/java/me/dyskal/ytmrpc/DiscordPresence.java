@@ -1,4 +1,4 @@
-package app.dyskal.ytmrpc;
+package me.dyskal.ytmrpc;
 
 import org.json.JSONArray;
 import org.json.JSONObject;

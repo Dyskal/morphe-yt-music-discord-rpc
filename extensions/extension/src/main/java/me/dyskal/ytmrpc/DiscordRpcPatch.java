@@ -1,4 +1,4 @@
-package app.dyskal.ytmrpc;
+package me.dyskal.ytmrpc;
 
 import android.content.Context;
 import android.content.Intent;
@@ -35,6 +35,9 @@ public final class DiscordRpcPatch {
 
     private DiscordRpcPatch() { }
 
+    /** Replaced by the patch with the application ID entered in Morphe Manager. */
+    public static String getApplicationId() { return ""; }
+
     public static void onSetMetadata(MediaMetadata value) {
         metadata = value;
     }
@@ -61,6 +64,19 @@ public final class DiscordRpcPatch {
                 }
             } catch (Exception ignored) { /* A launcher without shortcut support can use the settings activity directly. */ }
         });
+        worker.execute(() -> {
+            synchronized (credentialsLock) {
+                try {
+                    DiscordTokenStore store = new DiscordTokenStore(context);
+                    String savedAppId = store.read().optString("app_id");
+                    if (!savedAppId.isEmpty() && !savedAppId.equals(getApplicationId())) {
+                        store.clear();
+                        setSharingEnabled(false);
+                        status = "Application ID changed; sign in to Discord again";
+                    }
+                } catch (Exception ignored) { status = "Could not load Discord connection; reconnect in settings"; }
+            }
+        });
         worker.scheduleWithFixedDelay(() -> {
             try { tick(); }
             catch (Exception ignored) { status = "Discord presence unavailable; reconnect in settings"; }
@@ -83,22 +99,16 @@ public final class DiscordRpcPatch {
         new Handler(Looper.getMainLooper()).post(action);
     }
 
-    public static String appId(Context context) {
-        synchronized (credentialsLock) {
-            try { return new DiscordTokenStore(context).read().optString("app_id"); }
-            catch (Exception ignored) { return ""; }
-        }
-    }
-
-    public static void authorize(Context context, String appId) {
+    public static void authorize(Context context) {
         worker.execute(() -> {
             try {
+                String appId = getApplicationId();
                 String state = DiscordOAuth.randomSecret();
                 String verifier = DiscordOAuth.randomSecret();
-                String url = DiscordOAuth.authorizeUrl(appId.trim(), state, verifier);
+                String url = DiscordOAuth.authorizeUrl(appId, state, verifier);
                 synchronized (credentialsLock) {
                     stopGateway();
-                    new DiscordTokenStore(context).write(new JSONObject().put("app_id", appId.trim())
+                    new DiscordTokenStore(context).write(new JSONObject().put("app_id", appId)
                             .put("state", state).put("verifier", verifier).put("pending_at", System.currentTimeMillis()));
                 }
                 status = "Waiting for Discord authorization";
@@ -107,7 +117,7 @@ public final class DiscordRpcPatch {
                         context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                     } catch (Exception ignored) { status = "Cannot open browser"; }
                 });
-            } catch (Exception ignored) { status = "Could not start OAuth. Check the application ID."; }
+            } catch (Exception ignored) { status = "Could not start OAuth. Check the application ID in Manager and repatch."; }
         });
     }
 
@@ -119,6 +129,10 @@ public final class DiscordRpcPatch {
                 try {
                     DiscordTokenStore store = new DiscordTokenStore(context);
                     JSONObject pending = store.read();
+                    if (!getApplicationId().equals(pending.optString("app_id"))) {
+                        status = "OAuth callback belongs to a different Discord application";
+                        return;
+                    }
                     String expected = pending.optString("state");
                     String actual = uri.getQueryParameter("state");
                     long age = System.currentTimeMillis() - pending.optLong("pending_at");
@@ -172,8 +186,8 @@ public final class DiscordRpcPatch {
             if (saved.optLong("expires_at") < System.currentTimeMillis() + 60_000) {
                 String refresh = saved.optString("refresh_token");
                 if (refresh.isEmpty()) throw new IllegalStateException("Reconnect required");
-                JSONObject result = new DiscordOAuth().refresh(saved.getString("app_id"), refresh);
-                saveTokens(store, saved.getString("app_id"), result, refresh);
+                JSONObject result = new DiscordOAuth().refresh(getApplicationId(), refresh);
+                saveTokens(store, getApplicationId(), result, refresh);
                 return result.getString("access_token");
             }
             return saved.getString("access_token");
@@ -203,14 +217,12 @@ public final class DiscordRpcPatch {
         }
         idleSince = 0;
         if (gateway == null) {
-            String appId;
             synchronized (credentialsLock) {
                 JSONObject saved = new DiscordTokenStore(context).read();
                 if (saved.optString("access_token").isEmpty()) return;
-                appId = saved.getString("app_id");
             }
             long epoch = ++connectionEpoch;
-            gateway = new DiscordGateway(appId, DiscordRpcPatch::accessToken, value -> {
+            gateway = new DiscordGateway(getApplicationId(), DiscordRpcPatch::accessToken, value -> {
                 if (epoch == connectionEpoch) status = value;
             });
             gateway.start();
@@ -219,7 +231,7 @@ public final class DiscordRpcPatch {
         String artist = track.getString(MediaMetadata.METADATA_KEY_ARTIST);
         String id = track.getString(MediaMetadata.METADATA_KEY_MEDIA_ID);
         long wallNow = System.currentTimeMillis();
-        JSONObject activity = DiscordPresence.track(appId(context), title, artist, id,
+        JSONObject activity = DiscordPresence.track(getApplicationId(), title, artist, id,
                 duration, position, state.getPlaybackSpeed(), wallNow);
         String trackKey = title + '\n' + artist + '\n' + id + '\n' + duration + '\n' + state.getPlaybackSpeed();
         long start = position < 0 ? -1 : wallNow - position;

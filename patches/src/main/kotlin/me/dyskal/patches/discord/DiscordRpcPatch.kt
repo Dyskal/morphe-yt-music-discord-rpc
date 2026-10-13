@@ -1,4 +1,4 @@
-package app.dyskal.patches.discord
+package me.dyskal.patches.discord
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
@@ -7,23 +7,24 @@ import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.patch.Compatibility
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
+import app.morphe.patcher.patch.stringOption
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 
-private const val EXTENSION_CLASS = "Lapp/dyskal/ytmrpc/DiscordRpcPatch;"
+private const val EXTENSION_CLASS = "Lme/dyskal/ytmrpc/DiscordRpcPatch;"
 
 private val discordResourcesPatch = resourcePatch {
     execute {
         document("AndroidManifest.xml").use { manifest ->
             val application = manifest.getElementsByTagName("application").item(0)
             val settings = manifest.createElement("activity").apply {
-                setAttribute("android:name", "app.dyskal.ytmrpc.DiscordSettingsActivity")
+                setAttribute("android:name", "me.dyskal.ytmrpc.DiscordSettingsActivity")
                 setAttribute("android:exported", "true")
                 setAttribute("android:label", "Discord RPC settings")
                 setAttribute("android:theme", "@android:style/Theme.DeviceDefault")
             }
             application.appendChild(settings)
             val activity = manifest.createElement("activity").apply {
-                setAttribute("android:name", "app.dyskal.ytmrpc.DiscordOAuthActivity")
+                setAttribute("android:name", "me.dyskal.ytmrpc.DiscordOAuthActivity")
                 setAttribute("android:exported", "true")
                 setAttribute("android:excludeFromRecents", "true")
                 setAttribute("android:theme", "@android:style/Theme.Translucent.NoTitleBar")
@@ -49,9 +50,16 @@ private val discordResourcesPatch = resourcePatch {
 @Suppress("unused")
 val discordRpcPatch = bytecodePatch(
     name = "Discord rich presence",
-    description = "Shares music on Discord with OAuth2 + PKCE. Open the Discord RPC app shortcut to configure your own Discord application.",
+    description = "Shares music on Discord with OAuth2 + PKCE. Set your Discord application ID in patch options, then sign in using the Discord RPC app shortcut.",
     default = true
 ) {
+    val applicationId = stringOption(
+        key = "discordApplicationId",
+        title = "Discord application ID",
+        description = "Public application ID from the Discord Developer Portal (17–20 digits). Enable Social SDK/public-client OAuth and register ytmdiscord://oauth2/callback. Changing this ID requires repatching and signing in again.",
+        required = true
+    ) { it != null && it.matches(Regex("[0-9]{17,20}")) }
+
     dependsOn(discordResourcesPatch)
     compatibleWith(Compatibility(
         name = "YouTube Music",
@@ -64,6 +72,7 @@ val discordRpcPatch = bytecodePatch(
     ))
     extendWith("extensions/discord.mpe")
     execute {
+        embedDiscordApplicationId(DiscordApplicationIdFingerprint.method, applicationId.value!!)
         MusicActivityOnCreateFingerprint.method.addInstruction(
             0, "invoke-static/range {p0 .. p0}, $EXTENSION_CLASS->initialize(Landroid/content/Context;)V"
         )

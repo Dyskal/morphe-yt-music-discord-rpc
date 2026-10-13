@@ -1,4 +1,4 @@
-group = "app.dyskal"
+group = "me.dyskal"
 
 patches {
     about {
@@ -36,11 +36,13 @@ tasks {
         group = "verification"
         dependsOn("testClasses")
         classpath = sourceSets["test"].runtimeClasspath
-        mainClass.set("app.dyskal.patches.discord.DiscordDeviceBuildKt")
+        mainClass.set("me.dyskal.patches.discord.DiscordDeviceBuildKt")
         doFirst {
             val apk = providers.gradleProperty("discordApk").orNull
                 ?: throw GradleException("Requires -PdiscordApk=/absolute/path/to/music.apk")
-            setArgs(listOfNotNull(apk, providers.gradleProperty("discordOutput").orNull))
+            val appId = providers.gradleProperty("discordApplicationId").orNull
+                ?: throw GradleException("Requires -PdiscordApplicationId=<public Discord application ID>")
+            setArgs(listOfNotNull(apk, appId, providers.gradleProperty("discordOutput").orNull))
         }
     }
     register<JavaExec>("generatePatchesList") {

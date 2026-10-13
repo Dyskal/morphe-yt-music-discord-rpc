@@ -3,7 +3,7 @@ extension {
 }
 
 android {
-    namespace = "app.dyskal.ytmrpc"
+    namespace = "me.dyskal.ytmrpc"
     defaultConfig { minSdk = 26 }
 }
 

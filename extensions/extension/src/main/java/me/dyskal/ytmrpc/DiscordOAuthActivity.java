@@ -1,4 +1,4 @@
-package app.dyskal.ytmrpc;
+package me.dyskal.ytmrpc;
 
 import android.app.Activity;
 import android.os.Bundle;

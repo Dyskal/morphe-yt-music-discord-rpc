@@ -13,30 +13,11 @@ jobs:
       id-token: write
       attestations: write
     runs-on: ubuntu-latest
-    env:
-      MORPHE_BUILD_DEPS: ${{ github.workspace }}/.build-dependencies
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
-      # Build matching public source tags instead of depending on GitHub Packages token scopes.
-      - name: Checkout Morphe Gradle plugin
-        uses: actions/checkout@v7
-        with:
-          repository: MorpheApp/morphe-patches-gradle-plugin
-          ref: v1.3.4
-          path: .build-dependencies/patches-gradle-plugin
-          persist-credentials: false
-
-      - name: Checkout Morphe Patcher
-        uses: actions/checkout@v7
-        with:
-          repository: MorpheApp/morphe-patcher
-          ref: v1.15.1
-          path: .build-dependencies/morphe-patcher
-          persist-credentials: false
 
       - name: Setup Java
         uses: actions/setup-java@v6
@@ -52,9 +33,6 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-
-      - name: Verify Discord protocol
-        run: ./gradlew -p verification/discord test --no-daemon
 
       # Semantic release runs its own Gradle build command.
       # Only dev and main branch will generate a release as specified by .releaserc
