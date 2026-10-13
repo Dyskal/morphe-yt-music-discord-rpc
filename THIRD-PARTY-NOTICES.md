@@ -10,8 +10,8 @@ Runtime libraries bundled into the Android extension:
 | Okio (OkHttp dependency) | Square, Inc.; https://github.com/square/okio | Apache License 2.0 |
 | Kotlin standard library (OkHttp/Okio dependency) | JetBrains s.r.o. and contributors; https://github.com/JetBrains/kotlin | Apache License 2.0 |
 
-Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+The full Apache License 2.0 and upstream notices are included in [`patches/src/main/resources/discord/notices.txt`](patches/src/main/resources/discord/notices.txt), copied into the patched app's assets, and displayed under **About and licenses**.
 
-The protocol design was informed by Metrolist's OAuth/Gateway implementation. Its Kotlin source was not copied into this project. The migrated Java implementation was written for this personal patch.
+The protocol design and authentication guards were informed by Metrolist's OAuth/Gateway implementation. Its Kotlin source was not copied into this project. The Java implementation was written for this personal patch.
 
-Test-only dependencies (JUnit, MockWebServer, org.json and Robolectric Android API classes) are not bundled into patched apps.
+Test-only dependencies (JUnit, MockWebServer, and org.json) are not bundled into patched apps.

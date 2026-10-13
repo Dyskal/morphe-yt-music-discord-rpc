@@ -30,7 +30,10 @@ tasks {
         from(rootProject.file("LICENSE"), rootProject.file("NOTICE"), rootProject.file("UPSTREAM-NOTICE"),
             rootProject.file("THIRD-PARTY-NOTICES.md"))
     }
-    test { useJUnitPlatform() }
+    test {
+        useJUnitPlatform()
+        dependsOn(":extensions:extension:testDebugUnitTest")
+    }
     register<JavaExec>("validateDiscord") {
         description = "Applies the standalone Discord patch to a supplied APK with SDK DEX verification"
         group = "verification"

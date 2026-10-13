@@ -4,7 +4,7 @@ Experimental standalone YouTube Music patch, **compatible with Morphe**, based o
 
 Implements the OAuth2 + PKCE approach suggested in [Morphe issue #810](https://github.com/MorpheApp/morphe-patches/issues/810). Like current Metrolist, it authenticates with the Social SDK presence scope over the Discord Gateway. It does not embed the native Social SDK or request an account token.
 
-**Build and protocol tests pass; live Discord presence and real APK/device compatibility remain unverified.**
+**Build, protocol regression tests, and bundle/settings checks pass; live Discord presence and real APK/device compatibility remain unverified.**
 
 ## Install
 
@@ -18,6 +18,8 @@ Development releases are published from `dev`; enable prereleases in your patch-
 2. **Connect once:** open YouTube Music → **Settings → Discord rich presence → Connect with Discord**. Authorize in the browser; returning enables sharing automatically.
 3. **Listen:** enable activity visibility in Discord and play music. Later playback automatically reconnects using the saved credentials.
 
+If you already have a saved login for the selected application, **Connect** reconnects without opening the browser. New sign-ins ignore duplicate taps, time out after two minutes, and can be stopped with **Cancel sign-in**. Cancelled or failed sign-ins retain your previous credentials; sharing stays off until you enable it or reconnect.
+
 ### One-time setup for the application owner
 
 In the Discord Developer Portal, application `1559278040175878146` must have Social SDK/public-client OAuth enabled, access to `sdk.social_layer_presence`, and exactly `ytmdiscord://oauth2/callback` registered as an OAuth2 redirect URI. Users of the default application do not need to create their own Discord application.
@@ -28,15 +30,18 @@ The entry is added to YouTube Music's native settings page using the same intent
 
 Only one installed copy should handle the callback scheme. Credentials and pending PKCE state are encrypted using Android Keystore AES-GCM. Disabling sharing retains login; **Disconnect and forget account** deletes credentials.
 
-The application ID is stored in ordinary app preferences. No repatching is needed to change it. Connecting saves the selected ID, disconnects the current presence, and replaces the credentials with a fresh authorization for that application.
+The application ID is stored in ordinary app preferences. No repatching is needed to change it. A different application disconnects current presence while you authorize it; its ID and credentials replace the saved login only after authorization succeeds.
 
 ## Behavior
 
 - Song title, artist, listening activity, progress at 1× playback speed, and a YouTube Music link when metadata supplies a video ID.
 - Clears on pause, buffering, stop, or track end. Rate-limited changes may take roughly five seconds.
-- Heartbeats, transient reconnects, latest-track replay, and token refresh on subsequent identification.
+- Delay-based heartbeats, transient reconnects, latest-track replay, and token refresh on subsequent identification. Reconnects use backoff and stop after seven unsuccessful attempts; rate limits respect `Retry-After`.
+- A gateway authentication rejection triggers one forced token refresh. Revoked/invalid refresh grants stop reconnecting and ask you to sign in again; configuration failures show a separate error.
 - Disconnects after one minute without active playback.
+- Application-level initialization supports service-only playback starts. One-second progress polling runs only while sharing is enabled and playback is active; disabled/paused playback does not keep an idle poller running.
 - Artwork resolution is not implemented.
+- Long notices are available under **About and licenses**, rather than filling the connection screen.
 
 ## 🩹 Patches list
 
@@ -69,7 +74,7 @@ CI uses the workflow's built-in `GITHUB_TOKEN` to download published dependencie
 .\gradlew.bat :patches:buildAndroid :patches:test
 ```
 
-The bundle is `patches/build/libs/patches-*.mpp`. The bundle test checks that R8 retains settings, callback, hooks, and the WebSocket implementation.
+The bundle is `patches/build/libs/patches-*.mpp`. `:patches:test` also runs the extension's normal Android-module JVM tests (`:extensions:extension:testDebugUnitTest`). Local HTTP/WebSocket tests cover OAuth forms, error classification, timeouts/cancellation, duplicate and stale authorization attempts, forced refresh, heartbeat delays, reconnects, and presence coalescing. Bundle/settings tests check R8 retention and the native settings entry. These tests do not exercise Android Keystore, real preference rendering, or Discord's live acceptance of the OAuth gateway flow.
 
 Optional real-APK validation and unsigned output:
 
@@ -79,6 +84,12 @@ Optional real-APK validation and unsigned output:
 ```
 
 Device checks still needed: browser return, actual visible presence, refresh, background playback, skips/seeks, pause/resume, network recovery, and disabling sharing. If OAuth identification is rejected, verify application scope/public-client setup before considering a personal-token fallback.
+
+Diagnostics use controlled error categories, HTTP/gateway status codes, and exception type names. Tokens, authorization codes, raw server bodies, and gateway frames are not logged:
+
+```text
+adb logcat -s DyskalDiscordRPC AndroidRuntime
+```
 
 ## Development and releases
 

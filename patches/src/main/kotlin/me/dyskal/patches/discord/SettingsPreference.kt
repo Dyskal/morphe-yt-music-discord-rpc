@@ -4,6 +4,11 @@ import org.w3c.dom.Document
 import org.w3c.dom.Element
 
 private const val PREFERENCE_KEY = "dyskal_discord_rpc_settings"
+private object ResourceAnchor
+
+internal fun discordNoticesText(): String = requireNotNull(
+    ResourceAnchor.javaClass.getResourceAsStream("/discord/notices.txt")
+) { "Missing bundled Discord notices" }.bufferedReader(Charsets.UTF_8).use { it.readText() }
 
 /** Intent-backed native preference, matching the official YouTube Music settings integration. */
 internal fun addDiscordSettingsPreference(document: Document, packageName: String) {

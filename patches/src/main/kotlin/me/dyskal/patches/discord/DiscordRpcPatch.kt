@@ -13,6 +13,8 @@ private const val EXTENSION_CLASS = "Lme/dyskal/ytmrpc/DiscordRpcPatch;"
 
 private val discordResourcesPatch = resourcePatch {
     execute {
+        get("assets").mkdirs()
+        get("assets/dyskal_discord_notices.txt").writeText(discordNoticesText())
         document("AndroidManifest.xml").use { manifest ->
             val application = manifest.getElementsByTagName("application").item(0)
             val settings = manifest.createElement("activity").apply {
@@ -71,7 +73,7 @@ val discordRpcPatch = bytecodePatch(
     ))
     extendWith("extensions/discord.mpe")
     execute {
-        MusicActivityOnCreateFingerprint.method.addInstruction(
+        MusicApplicationOnCreateFingerprint.method.addInstruction(
             0, "invoke-static/range {p0 .. p0}, $EXTENSION_CLASS->initialize(Landroid/content/Context;)V"
         )
         MediaSessionSetMetadataFingerprint.let {
