@@ -70,6 +70,7 @@ val discordRpcPatch = bytecodePatch(
     ))
     extendWith("extensions/discord.mpe")
     execute {
+        installNativeMetadataHook()
         MusicApplicationOnCreateFingerprint.method.addInstruction(
             0, "invoke-static/range {p0 .. p0}, $EXTENSION_CLASS->initialize(Landroid/content/Context;)V"
         )

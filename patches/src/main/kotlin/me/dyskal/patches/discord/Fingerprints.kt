@@ -33,3 +33,17 @@ internal object MediaSessionSetPlaybackStateFingerprint : Fingerprint(
         parameters = listOf("Landroid/media/session/PlaybackState;")
     ))
 )
+
+internal object MusicMetadataAugmentFingerprint : Fingerprint(
+    returnType = "V",
+    parameters = listOf("L", "L"),
+    filters = listOf(string("android.media.metadata.ALBUM"), string("android.media.IS_EXPLICIT"))
+)
+
+internal object MusicVideoIdFingerprint : Fingerprint(
+    filters = listOf(string("Null initialPlayabilityStatus")),
+    custom = { method, _ ->
+        method.parameterTypes.size in 2..3 && method.parameterTypes[0].toString().startsWith("L")
+                && method.parameterTypes[1].toString() == "Ljava/lang/String;"
+    }
+)

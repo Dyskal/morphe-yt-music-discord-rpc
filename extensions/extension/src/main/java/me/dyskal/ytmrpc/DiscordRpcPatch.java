@@ -23,6 +23,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 import java.lang.ref.WeakReference;
+import java.util.LinkedHashMap;
 
 /** Application-level initialization covers normal and service-only playback starts. */
 public final class DiscordRpcPatch {
@@ -40,6 +41,8 @@ public final class DiscordRpcPatch {
     private static volatile String status = "Not connected";
     private static volatile MediaMetadata metadata;
     private static volatile PlaybackState playback;
+    private static volatile String nativeVideoId, metadataVideoId;
+    private static final LinkedHashMap<String, DiscordNativeMetadata> nativeMetadata = new LinkedHashMap<>();
     private static volatile boolean initialized, authorized;
     private static SharedPreferences preferences;
     private static DiscordTokenStore tokenStore;
@@ -112,11 +115,36 @@ public final class DiscordRpcPatch {
 
     public static void onSetMetadata(MediaMetadata value) {
         metadata = value;
+        metadataVideoId = nativeVideoId;
         if (initialized && isSharingEnabled()) worker.execute(DiscordRpcPatch::reconcileSafely);
     }
     public static void onSetPlaybackState(PlaybackState value) {
         playback = value;
         if (initialized && isSharingEnabled()) worker.execute(DiscordRpcPatch::reconcileSafely);
+    }
+
+    public static void onNativeVideoId(String videoId) {
+        if (DiscordTrack.videoId(videoId) == null || videoId.equals(nativeVideoId)) return;
+        nativeVideoId = videoId;
+        if (initialized) worker.execute(DiscordRpcPatch::reconcileSafely);
+    }
+
+    public static void onNativeQueueMetadata(byte[] renderer) {
+        if (renderer == null || renderer.length > 1_048_576) return;
+        worker.execute(() -> {
+            try {
+                DiscordNativeMetadata data = DiscordNativeMetadata.parse(renderer);
+                if (data == null) return;
+                DiscordNativeMetadata previous = nativeMetadata.put(data.videoId, data);
+                while (nativeMetadata.size() > 4) nativeMetadata.remove(nativeMetadata.keySet().iterator().next());
+                if (nativeVideoId == null) nativeVideoId = data.videoId;
+                if (metadataVideoId == null && data.videoId.equals(nativeVideoId) && metadata != null
+                        && data.title.equals(metadata.getString(MediaMetadata.METADATA_KEY_TITLE))) metadataVideoId = data.videoId;
+                if (previous == null) DiscordDiagnostics.info("Native track metadata: video=true, artist=" + (data.artistId != null)
+                        + ", album=" + (data.albumId != null) + ", cover=" + (data.artworkUrl != null));
+                if (initialized && isSharingEnabled()) reconcileSafely();
+            } catch (Exception error) { DiscordDiagnostics.failure("Decode native track metadata", error); }
+        });
     }
 
     public static void setSharingEnabled(boolean enabled) {
@@ -354,6 +382,11 @@ public final class DiscordRpcPatch {
         }
         MediaMetadata track = metadata;
         PlaybackState state = playback;
+        if (nativeVideoId != null && !nativeVideoId.equals(metadataVideoId)) {
+            cancelArtwork();
+            if (gateway != null) gateway.update(DiscordPresence.update(null), "clear");
+            return;
+        }
         String title = track == null ? null : track.getString(MediaMetadata.METADATA_KEY_TITLE);
         boolean playing = state != null && state.getState() == PlaybackState.STATE_PLAYING
                 && title != null && !title.trim().isEmpty();
@@ -397,7 +430,7 @@ public final class DiscordRpcPatch {
             });
             gateway.start();
         }
-        DiscordTrack snapshot = DiscordTrack.from(track);
+        DiscordTrack snapshot = DiscordTrack.from(track).enrich(nativeMetadata.get(nativeVideoId), nativeVideoId);
         ensureArtwork(snapshot);
         long wallNow = System.currentTimeMillis();
         JSONObject activity = DiscordPresence.track(getApplicationId(), snapshot, usesArtistHeadline(), artwork,

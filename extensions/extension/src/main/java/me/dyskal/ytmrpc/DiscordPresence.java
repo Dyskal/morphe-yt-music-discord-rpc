@@ -11,15 +11,18 @@ public final class DiscordPresence {
                                    long duration, long position, float speed, long now) throws Exception {
         JSONObject activity = new JSONObject().put("application_id", appId)
                 .put("name", truncate(artistHeadline && !track.artist.isEmpty() ? track.artist : "YouTube Music"))
-                .put("status_display_type", 0).put("type", 2).put("details", truncate(track.title))
-                .put("details_url", track.songUrl);
-        if (!track.artist.isEmpty()) activity.put("state", truncate(track.artist)).put("state_url", track.artistUrl);
-        activity.put("buttons", new JSONArray().put("Listen on YouTube Music"));
-        activity.put("metadata", new JSONObject().put("button_urls", new JSONArray().put(track.songUrl)));
+                .put("status_display_type", 0).put("type", 2).put("details", truncate(track.title));
+        if (track.songUrl != null) {
+            activity.put("details_url", track.songUrl);
+            activity.put("buttons", new JSONArray().put("Listen on YouTube Music"));
+            activity.put("metadata", new JSONObject().put("button_urls", new JSONArray().put(track.songUrl)));
+        }
+        if (!track.artist.isEmpty()) activity.put("state", truncate(track.artist));
+        if (track.artistUrl != null) activity.put("state_url", track.artistUrl);
         if (artwork != null) {
             activity.put("assets", new JSONObject().put("large_image", artwork)
-                    .put("large_text", truncate(track.album.isEmpty() ? track.title : track.album))
-                    .put("large_url", track.albumUrl));
+                    .put("large_text", truncate(track.album.isEmpty() ? track.title : track.album)));
+            if (track.albumUrl != null) activity.getJSONObject("assets").put("large_url", track.albumUrl);
         }
         // Discord cannot represent a non-1x progress bar accurately. Omit it in that case.
         if (duration > 0 && position >= 0 && position < duration && Math.abs(speed - 1f) < 0.001f) {

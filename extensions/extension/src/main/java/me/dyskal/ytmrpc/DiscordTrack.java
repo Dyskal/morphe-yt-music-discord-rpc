@@ -4,20 +4,38 @@ import android.media.MediaMetadata;
 
 import java.net.URI;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 
 /** Immutable metadata snapshot shared by text, hyperlinks, and asynchronous artwork lookup. */
 public final class DiscordTrack {
     public final String title, artist, album, videoId, artworkUrl, songUrl, artistUrl, albumUrl;
 
     public DiscordTrack(String title, String artist, String album, String mediaId, String imageUrl) {
+        this(title, artist, album, mediaId, imageUrl, null, null);
+    }
+
+    public DiscordTrack(String title, String artist, String album, String mediaId, String imageUrl,
+                        String artistId, String albumId) {
         this.title = clean(title); this.artist = clean(artist); this.album = clean(album);
         videoId = videoId(mediaId);
-        songUrl = videoId == null ? search(this.title + " " + this.artist) : "https://music.youtube.com/watch?v=" + videoId;
-        artistUrl = this.artist.isEmpty() ? null : search(this.artist);
-        albumUrl = this.album.isEmpty() ? songUrl : search(this.album + " " + this.artist);
+        songUrl = videoId == null ? null : "https://music.youtube.com/watch?v=" + videoId;
+        artistUrl = artistId != null && artistId.matches("UC[A-Za-z0-9_-]{22}")
+                ? "https://music.youtube.com/channel/" + artistId : null;
+        albumUrl = albumId != null && albumId.matches("MPRE[A-Za-z0-9_-]{4,100}")
+                ? "https://music.youtube.com/browse/" + albumId : null;
         artworkUrl = publicUrl(imageUrl) != null ? imageUrl
                 : videoId == null ? null : "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg";
+    }
+
+    public DiscordTrack enrich(DiscordNativeMetadata nativeData, String currentVideoId) {
+        String id = videoId(currentVideoId) != null ? currentVideoId : videoId;
+        if (nativeData == null || (id != null && !id.equals(nativeData.videoId))) {
+            return new DiscordTrack(title, artist, album, id, artworkUrl);
+        }
+        return new DiscordTrack(nativeData.title.isEmpty() ? title : nativeData.title,
+                nativeData.artist.isEmpty() ? artist : nativeData.artist,
+                nativeData.album.isEmpty() ? album : nativeData.album, nativeData.videoId,
+                nativeData.artworkUrl == null ? artworkUrl : nativeData.artworkUrl,
+                nativeData.artistId, nativeData.albumId);
     }
 
     public static DiscordTrack from(MediaMetadata metadata) {
@@ -35,7 +53,7 @@ public final class DiscordTrack {
                 metadata.getString(MediaMetadata.METADATA_KEY_ALBUM), id, image);
     }
 
-    public String key() { return title + '\n' + artist + '\n' + album + '\n' + videoId + '\n' + artworkUrl; }
+    public String key() { return title + '\n' + artist + '\n' + album + '\n' + videoId + '\n' + artworkUrl + '\n' + artistUrl + '\n' + albumUrl; }
     public static String publicUrl(String value) {
         if (value == null || value.isEmpty()) return null;
         try {
@@ -66,10 +84,6 @@ public final class DiscordTrack {
             }
         } catch (Exception ignored) { }
         return null;
-    }
-    private static String search(String query) {
-        try { return "https://music.youtube.com/search?q=" + URLEncoder.encode(query.trim(), "UTF-8"); }
-        catch (Exception ignored) { return "https://music.youtube.com/"; }
     }
     private static String clean(String value) { return value == null ? "" : value.trim(); }
 }

@@ -4,7 +4,7 @@ YouTube Music add-on patch, **compatible with Morphe**, based on the [official p
 
 Implements the OAuth2 + PKCE approach suggested in [Morphe issue #810](https://github.com/MorpheApp/morphe-patches/issues/810). Like current Metrolist, it authenticates with the Social SDK presence scope over the Discord Gateway. It does not embed the native Social SDK or request an account token.
 
-**The core OAuth/presence flow was confirmed by the author on YouTube Music 9.20.53 with Morphe Patches 1.47.0. The new artwork, hyperlinks, headline customization, and Morphe-hosted preferences still need device verification.**
+**The core OAuth/presence flow was confirmed by the author on YouTube Music 9.20.53 with Morphe Patches 1.47.0. Native metadata hooks now apply and pass SDK DEX/hierarchy validation on the unpatched 9.20.53 APK. The richer cover/ID data and explicit browser return still need verification in an updated device build.**
 
 ## Install
 
@@ -15,7 +15,7 @@ Development releases are published from `dev`; enable prereleases in your patch-
 ## Streamlined setup
 
 1. **Patch and install:** select **Discord rich presence** in Manager.
-2. **Connect once:** open YouTube Music → **Settings → Morphe → Misc → Discord rich presence → Connect with Discord**. Authorize in the browser; returning enables sharing automatically.
+2. **Connect once:** open YouTube Music → **Settings → Morphe → Misc → Discord rich presence → Connect with Discord**. Authorize in the browser; the callback brings Morphe settings back to the foreground and enables sharing after successful exchange.
 3. **Listen:** enable activity visibility in Discord and play music. Later playback automatically reconnects using the saved credentials.
 
 If you already have a saved login for the selected application, **Connect** reconnects without opening the browser. New sign-ins ignore duplicate taps, time out after two minutes, and can be stopped with **Cancel sign-in**. Cancelled or failed sign-ins retain your previous credentials; sharing stays off until you enable it or reconnect.
@@ -34,8 +34,9 @@ No repatching is needed to change the application ID or appearance. Same-applica
 
 ## Behavior
 
-- Song title, artist, listening activity, progress at 1× playback speed, and clickable title/artist/album cover links. Title links use the track's video ID when available; artist and album links open YouTube Music search because standard playback metadata does not supply their browse/channel IDs.
-- Public metadata artwork URLs are preferred, with a YouTube-thumbnail fallback. Discord's external-assets API resolves URLs into `mp:external` image references. A bounded per-application cache avoids repeated lookups; pause, skip, logout, and account changes cancel stale work. Artwork errors leave text presence working and are shown in the connection summary.
+- Song title, artist, listening activity, progress at 1× playback speed, and direct title/artist/album cover links. The add-on captures Music's current native queue renderer and player video ID, rather than relying exclusively on MediaSession metadata (9.20.53 omits IDs and artwork URI there).
+- Queue byline navigation endpoints supply real artist channel IDs and album browse IDs; title links use the current player video ID. Missing IDs omit a hyperlink instead of substituting a name search. Upcoming/unrelated queue/menu entries are not used to guess an artist or album.
+- The native renderer supplies the largest public cover URL. MediaSession image URIs and a YouTube-thumbnail fallback remain secondary sources. Discord's external-assets API resolves URLs into `mp:external` references. A bounded per-application cache avoids repeated lookups; pause, skip, logout, and account changes cancel stale work. Artwork errors leave text presence working and are shown in the connection summary.
 - **Profile headline** defaults to **Artist**, replacing “YouTube Music” under your Discord name. Select **YouTube Music** to use the application name. Missing artist metadata falls back to the application name.
 - Clears on pause, buffering, stop, or track end. Rate-limited changes may take roughly five seconds.
 - Delay-based heartbeats, transient reconnects, latest-track replay, and token refresh on subsequent identification. Reconnects use backoff and stop after seven unsuccessful attempts; rate limits respect `Retry-After`.
@@ -75,16 +76,18 @@ CI uses the workflow's built-in `GITHUB_TOKEN` to download published dependencie
 .\gradlew.bat :patches:buildAndroid :patches:test
 ```
 
-The bundle is `patches/build/libs/patches-*.mpp`. `:patches:test` also runs the extension's normal Android-module JVM tests (`:extensions:extension:testDebugUnitTest`). Local HTTP/WebSocket tests cover OAuth, cancellation, refresh, heartbeats, reconnects, presence coalescing, artwork resolution/cache isolation, hyperlinks, and headline selection. Bundle/settings tests check R8 retention and the Morphe add-on preference declaration. These tests do not exercise Android Keystore, real preference rendering, or Discord clients' rendering of artwork/hyperlinks.
+The bundle is `patches/build/libs/patches-*.mpp`. `:patches:test` also runs the extension's normal Android-module JVM tests (`:extensions:extension:testDebugUnitTest`). Tests cover OAuth, cancellation, refresh, heartbeats, reconnects, presence coalescing, artwork/cache isolation, native renderer decoding, direct hyperlinks, and headline selection. Bundle/settings tests check R8 retention and the Morphe add-on declaration. Real-APK validation checks the generated native projections and cross-DEX class hierarchy. These checks do not substitute for Android Keystore, preference rendering, or Discord clients' cover/hyperlink rendering tests.
 
 Optional real-APK validation and unsigned output:
+
+SDK DEX/hierarchy checks do not run ART's full register-type verifier. A regression test checks the generated queue helper's instance receiver register; an updated-device launch remains required.
 
 ```powershell
 .\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PmorpheBundle=C:\path\official-patches.mpp"
 .\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PmorpheBundle=C:\path\official-patches.mpp" "-PdiscordOutput=C:\existing-folder\music-discord-unsigned.apk"
 ```
 
-Device checks for this update: Morphe preference navigation/dialog layout, cover rendering, clickable title/artist/cover URLs, headline selection, rapid track skips, refresh, background playback, and network recovery. Discord client versions can differ in hyperlink rendering. If artwork is missing, check **Connection status** and the artwork HTTP diagnostics.
+Device checks for this update: OAuth's foreground return, native metadata capability flags, cover rendering, direct title/artist/album URLs, and rapid track skips. `Native track metadata: video=..., artist=..., album=..., cover=...` logs presence of fields without dumping renderer data. If cover lookup starts but fails, **Connection status** reports its Discord artwork HTTP error separately. Discord clients can differ in hyperlink rendering.
 
 Diagnostics use controlled error categories, HTTP/gateway status codes, and exception type names. Tokens, authorization codes, raw server bodies, and gateway frames are not logged:
 

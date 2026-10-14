@@ -28,7 +28,7 @@ class DiscordBundleTest {
         assertTrue(!classes.containsKey("Lme/dyskal/ytmrpc/DiscordSettingsActivity;"))
         val hooks = classes["Lme/dyskal/ytmrpc/DiscordRpcPatch;"]
         assertNotNull(hooks)
-        for (name in listOf("initialize", "getApplicationId", "onSetMetadata", "onSetPlaybackState")) {
+        for (name in listOf("initialize", "getApplicationId", "onSetMetadata", "onSetPlaybackState", "onNativeVideoId", "onNativeQueueMetadata")) {
             assertTrue(hooks.methods.any { it.name == name })
         }
         assertTrue(classes.containsKey("Lokhttp3/OkHttpClient;"))
