@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-14T22:17:03",
-  "description": "## [1.0.0-dev.4](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.3...v1.0.0-dev.4) (2026-10-14)\n\n### 🐛 Bug Fixes\n\n* capture native music metadata and return from Discord OAuth ([5b12d30](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/5b12d30ba0637a08de05182217bd68ed42ee648f))",
-  "download_url": "https://github.com/Dyskal/morphe-yt-music-discord-rpc/releases/download/v1.0.0-dev.4/patches-1.0.0-dev.4.mpp",
+  "created_at": "2026-10-14T22:39:51",
+  "description": "## [1.0.0-dev.5](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.4...v1.0.0-dev.5) (2026-10-14)\n\n### 🐛 Bug Fixes\n\n* use Morphe themed Discord settings dialogs ([71e488d](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/71e488d45ae42cb6d83842788aeb2a560d1699a6))",
+  "download_url": "https://github.com/Dyskal/morphe-yt-music-discord-rpc/releases/download/v1.0.0-dev.5/patches-1.0.0-dev.5.mpp",
   "signature_download_url": "",
-  "version": "1.0.0-dev.4"
+  "version": "1.0.0-dev.5"
 }

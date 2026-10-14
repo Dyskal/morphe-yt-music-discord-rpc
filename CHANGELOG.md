@@ -1,3 +1,9 @@
+## [1.0.0-dev.5](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.4...v1.0.0-dev.5) (2026-10-14)
+
+### 🐛 Bug Fixes
+
+* use Morphe themed Discord settings dialogs ([71e488d](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/71e488d45ae42cb6d83842788aeb2a560d1699a6))
+
 ## [1.0.0-dev.4](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.3...v1.0.0-dev.4) (2026-10-14)
 
 ### 🐛 Bug Fixes
