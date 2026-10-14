@@ -1,3 +1,9 @@
+## [1.0.0-dev.4](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.3...v1.0.0-dev.4) (2026-10-14)
+
+### 🐛 Bug Fixes
+
+* capture native music metadata and return from Discord OAuth ([5b12d30](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/5b12d30ba0637a08de05182217bd68ed42ee648f))
+
 ## [1.0.0-dev.3](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2026-10-14)
 
 ### ✨ New Features
