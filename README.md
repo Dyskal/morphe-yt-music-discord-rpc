@@ -47,7 +47,7 @@ No repatching is needed to change the application ID or appearance. Same-applica
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v1.0.0-dev.1](https://github.com/Dyskal/morphe-yt-music-discord-rpc/releases/tag/v1.0.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;1 patches total
+> **[v1.0.0-dev.2](https://github.com/Dyskal/morphe-yt-music-discord-rpc/releases/tag/v1.0.0-dev.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;1 patches total
 <details open>
 <summary>📦 YouTube Music&nbsp;&nbsp;•&nbsp;&nbsp;1 patch</summary>
 <br>
@@ -59,7 +59,7 @@ No repatching is needed to change the application ID or appearance. Same-applica
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
-| [Discord rich presence](#discord-rich-presence) | Shares music on Discord with OAuth2 + PKCE. Open the Discord RPC app shortcut to configure your own Discord application. |  |
+| [Discord rich presence](#discord-rich-presence) | Shares music on Discord with OAuth2 + PKCE. Uses Dyskal's Discord application by default; sign in from YouTube Music Settings → Discord rich presence. |  |
 
 </details>
 
