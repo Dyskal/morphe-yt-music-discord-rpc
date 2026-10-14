@@ -1,3 +1,9 @@
+## [1.0.0-dev.6](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.5...v1.0.0-dev.6) (2026-10-14)
+
+### 🐛 Bug Fixes
+
+* resolve album links from current track navigation menu ([d9a68a3](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/d9a68a3012916debd52dc03ca1508b0a009c1aaf))
+
 ## [1.0.0-dev.5](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.4...v1.0.0-dev.5) (2026-10-14)
 
 ### 🐛 Bug Fixes
