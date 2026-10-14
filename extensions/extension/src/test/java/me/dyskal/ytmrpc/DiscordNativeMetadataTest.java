@@ -24,6 +24,34 @@ public class DiscordNativeMetadataTest {
         byte[] endpoint = browseId == null ? new byte[0] : field(5, field(48687626, text(2, browseId)));
         return field(1, message(text(1, text), endpoint));
     }
+    private static byte[] menuNavigation(String browseId) throws Exception {
+        return field(1, field(66441108, message(field(1, run("Go to album", null)),
+                field(3, field(48687626, text(2, browseId))))));
+    }
+
+    @Test public void androidBylineWithoutAlbumEndpointUsesCurrentRendererAlbumMenu() throws Exception {
+        byte[] renderer = message(text(10, VIDEO), field(1, run("Song", null)),
+                field(2, run("LE SSERAFIM", ARTIST)),
+                field(19, field(66439850, message(menuNavigation(ARTIST), menuNavigation(ALBUM)))));
+        DiscordNativeMetadata data = DiscordNativeMetadata.parse(renderer);
+        assertEquals(ALBUM, data.albumId); assertEquals(ARTIST, data.artistId);
+        // The menu label is an action, not the album name. Preserve MediaSession's album label.
+        DiscordTrack track = new DiscordTrack("Song", "LE SSERAFIM", "CRAZY", null, null).enrich(data, VIDEO);
+        assertEquals("CRAZY", track.album);
+        assertEquals("https://music.youtube.com/browse/" + ALBUM, track.albumUrl);
+        assertEquals(track.albumUrl, DiscordPresence.track("1559278040175878146", track, true,
+                "mp:external/cover", 0, -1, 1, 0).getJSONObject("assets").getString("large_url"));
+    }
+
+    @Test public void menuServicePayloadsOtherTracksAndConflictingAlbumsAreNotUsed() throws Exception {
+        byte[] service = field(1, field(66441155, field(3, field(48687626, text(2, ALBUM)))));
+        byte[] renderer = message(text(10, VIDEO), field(19, field(66439850, service)),
+                field(99, field(19, field(66439850, menuNavigation(ALBUM)))));
+        assertNull(DiscordNativeMetadata.parse(renderer).albumId);
+        byte[] ambiguous = message(text(10, VIDEO), field(19, field(66439850,
+                message(menuNavigation(ALBUM), menuNavigation("MPREb_differentAlbum")))));
+        assertNull(DiscordNativeMetadata.parse(ambiguous).albumId);
+    }
 
     @Test public void nativeRendererSuppliesRealIdsAndLargestCover() throws Exception {
         byte[] renderer = message(text(10, VIDEO), field(1, run("1-800-hot-n-fun", null)),

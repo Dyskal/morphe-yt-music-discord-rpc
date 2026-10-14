@@ -36,6 +36,9 @@ public final class DiscordNativeMetadata {
                 }
             }
         }
+        // Android's byline can omit the album endpoint. The current renderer's own
+        // "Go to album" menu item still has it; do not scan service items or other tracks.
+        if (albumId == null) albumId = menuAlbumId(bytes(root, 19));
         String artwork = null; long width = -1;
         byte[] thumbnails = bytes(root, 3);
         if (thumbnails != null) for (Field entry : fields(thumbnails)) {
@@ -46,6 +49,26 @@ public final class DiscordNativeMetadata {
             if (DiscordTrack.publicUrl(url) != null && candidateWidth >= width) { artwork = url; width = candidateWidth; }
         }
         return new DiscordNativeMetadata(video, title, artist, album, artistId, albumId, artwork);
+    }
+    private static String menuAlbumId(byte[] menuWrapper) throws Exception {
+        if (menuWrapper == null) return null;
+        byte[] menu = bytes(fields(menuWrapper), 66439850); // MenuRenderer.
+        if (menu == null) return null;
+        String albumId = null;
+        for (Field item : fields(menu)) {
+            if (item.number != 1 || item.data == null) continue;
+            byte[] navigationItem = bytes(fields(item.data), 66441108); // MenuNavigationItemRenderer.
+            if (navigationItem == null) continue;
+            byte[] endpoint = bytes(fields(navigationItem), 3);
+            if (endpoint == null) continue;
+            byte[] browse = bytes(fields(endpoint), 48687626); // BrowseEndpoint.
+            if (browse == null) continue;
+            String id = text(bytes(fields(browse), 2));
+            if (!id.matches("MPRE[A-Za-z0-9_-]{4,100}")) continue;
+            if (albumId != null && !albumId.equals(id)) return null; // Ambiguous menu: do not guess.
+            albumId = id;
+        }
+        return albumId;
     }
     private static String richText(byte[] data) throws Exception {
         if (data == null) return "";
