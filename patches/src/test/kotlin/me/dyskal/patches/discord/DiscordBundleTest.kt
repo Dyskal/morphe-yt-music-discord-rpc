@@ -16,11 +16,16 @@ class DiscordBundleTest {
         assertNotNull(stream, "The bundle must include its own Android extension")
         val dex = stream.use { DexBackedDexFile(Opcodes.getDefault(), ByteBuffer.wrap(it.readBytes())) }
         val classes = dex.classes.associateBy { it.type }
-        for (type in listOf("DiscordOAuthActivity", "DiscordSettingsActivity")) {
+        for (type in listOf("DiscordOAuthActivity")) {
             val activity = classes["Lme/dyskal/ytmrpc/$type;"]
             assertNotNull(activity, "R8 must retain manifest-injected $type")
             assertTrue(activity.methods.any { it.name == "onCreate" })
         }
+        val controls = classes["Lme/dyskal/ytmrpc/DiscordPreferences;"]
+        assertNotNull(controls)
+        assertEquals("Landroid/preference/Preference;", controls.superclass)
+        assertTrue(controls.methods.any { it.name == "onAttachedToActivity" })
+        assertTrue(!classes.containsKey("Lme/dyskal/ytmrpc/DiscordSettingsActivity;"))
         val hooks = classes["Lme/dyskal/ytmrpc/DiscordRpcPatch;"]
         assertNotNull(hooks)
         for (name in listOf("initialize", "getApplicationId", "onSetMetadata", "onSetPlaybackState")) {

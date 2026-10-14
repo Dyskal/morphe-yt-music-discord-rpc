@@ -9,29 +9,32 @@ import kotlin.test.assertFailsWith
 
 class DiscordSettingsPreferenceTest {
     @Test
-    fun `native settings entry preserves existing rows and targets the cloned app package`() {
-        val xml = """<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"><Preference android:key="existing" android:title="Existing"/></PreferenceScreen>"""
-        val document = DocumentBuilderFactory.newInstance().newDocumentBuilder()
-            .parse(ByteArrayInputStream(xml.toByteArray()))
-        addDiscordSettingsPreference(document, "app.personal.music")
-        val row = document.documentElement.firstChild as Element
-        assertEquals("dyskal_discord_rpc_settings", row.getAttribute("android:key"))
-        assertEquals("Discord rich presence", row.getAttribute("android:title"))
-        val intent = row.firstChild as Element
-        assertEquals("app.personal.music", intent.getAttribute("android:targetPackage"))
-        assertEquals("me.dyskal.ytmrpc.DiscordSettingsActivity", intent.getAttribute("android:targetClass"))
-        assertEquals("existing", (row.nextSibling as Element).getAttribute("android:key"))
-
-        // Updating the destination must not duplicate the settings row.
-        addDiscordSettingsPreference(document, "com.google.android.apps.youtube.music")
+    fun `add-on declaration targets Morphe Misc and uses standard preference components`() {
+        val xml = """<morphe-add-on-preferences xmlns:android="http://schemas.android.com/apk/res/android"><screen key="other"><Preference android:key="other_addon"/></screen></morphe-add-on-preferences>"""
+        val document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray()))
+        addDiscordPreferences(document)
         assertEquals(2, document.documentElement.childNodes.length)
-        assertEquals("com.google.android.apps.youtube.music", (row.firstChild as Element).getAttribute("android:targetPackage"))
+        val target = document.documentElement.lastChild as Element
+        assertEquals("morphe_settings_music_screen_9_misc", target.getAttribute("key"))
+        val screen = target.firstChild as Element
+        assertEquals("PreferenceScreen", screen.tagName)
+        assertEquals("dyskal_discord_rpc_settings", screen.getAttribute("android:key"))
+        assertEquals(1, screen.getElementsByTagName("EditTextPreference").length)
+        assertEquals(1, screen.getElementsByTagName("SwitchPreference").length)
+        assertEquals(1, screen.getElementsByTagName("ListPreference").length)
+        assertEquals(0, screen.getElementsByTagName("intent").length)
+        for (i in 0 until screen.childNodes.length) {
+            assertEquals("false", (screen.childNodes.item(i) as Element).getAttribute("android:persistent"))
+        }
+        addDiscordPreferences(document)
+        assertEquals(2, document.documentElement.childNodes.length)
+        assertEquals("other_addon", ((document.documentElement.firstChild as Element).firstChild as Element).getAttribute("android:key"))
     }
 
     @Test
-    fun `unexpected settings schema fails instead of silently producing an inaccessible entry`() {
+    fun `unexpected declaration schema fails clearly`() {
         val document = DocumentBuilderFactory.newInstance().newDocumentBuilder()
             .parse(ByteArrayInputStream("<resources/>".toByteArray()))
-        assertFailsWith<IllegalArgumentException> { addDiscordSettingsPreference(document, "app.music") }
+        assertFailsWith<IllegalArgumentException> { addDiscordPreferences(document) }
     }
 }

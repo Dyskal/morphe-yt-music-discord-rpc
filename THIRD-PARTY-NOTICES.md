@@ -14,4 +14,6 @@ The full Apache License 2.0 and upstream notices are included in [`patches/src/m
 
 The protocol design and authentication guards were informed by Metrolist's OAuth/Gateway implementation. Its Kotlin source was not copied into this project. The Java implementation was written for this personal patch.
 
+The profile-headline approach was also informed by https://github.com/kernoeb/mac-now-playing. Its Swift source was not copied. Artwork resolution follows Metrolist's external-assets protocol; it uses the original player's public image URL or a YouTube thumbnail rather than fetching third-party catalog matches.
+
 Test-only dependencies (JUnit, MockWebServer, and org.json) are not bundled into patched apps.

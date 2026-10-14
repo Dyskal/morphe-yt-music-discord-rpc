@@ -3,7 +3,7 @@ group = "me.dyskal"
 patches {
     about {
         name = "Dyskal YouTube Music Discord RPC"
-        description = "Experimental standalone Discord rich presence for YouTube Music"
+        description = "Discord rich presence add-on for Morphe YouTube Music"
         source = "https://github.com/Dyskal/morphe-yt-music-discord-rpc"
         author = "Dyskal"
         contact = "na"
@@ -43,7 +43,9 @@ tasks {
         doFirst {
             val apk = providers.gradleProperty("discordApk").orNull
                 ?: throw GradleException("Requires -PdiscordApk=/absolute/path/to/music.apk")
-            setArgs(listOfNotNull(apk, providers.gradleProperty("discordOutput").orNull))
+            val official = providers.gradleProperty("morpheBundle").orNull
+                ?: throw GradleException("Requires -PmorpheBundle=/absolute/path/to/official-patches.mpp (1.47.0+)")
+            setArgs(listOfNotNull(apk, official, providers.gradleProperty("discordOutput").orNull))
         }
     }
     register<JavaExec>("generatePatchesList") {

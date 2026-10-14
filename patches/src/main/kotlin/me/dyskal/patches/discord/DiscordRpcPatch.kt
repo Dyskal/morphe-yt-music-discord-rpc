@@ -7,6 +7,7 @@ import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.patch.Compatibility
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
+import app.morphe.patcher.patch.PatchException
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 
 private const val EXTENSION_CLASS = "Lme/dyskal/ytmrpc/DiscordRpcPatch;"
@@ -15,15 +16,12 @@ private val discordResourcesPatch = resourcePatch {
     execute {
         get("assets").mkdirs()
         get("assets/dyskal_discord_notices.txt").writeText(discordNoticesText())
+        if (!get(ADD_ON_PREFERENCES).exists()) {
+            get(ADD_ON_PREFERENCES).writeText("""<morphe-add-on-preferences xmlns:android="http://schemas.android.com/apk/res/android"/>""")
+        }
+        document(ADD_ON_PREFERENCES).use { addDiscordPreferences(it) }
         document("AndroidManifest.xml").use { manifest ->
             val application = manifest.getElementsByTagName("application").item(0)
-            val settings = manifest.createElement("activity").apply {
-                setAttribute("android:name", "me.dyskal.ytmrpc.DiscordSettingsActivity")
-                setAttribute("android:exported", "false")
-                setAttribute("android:label", "Discord RPC settings")
-                setAttribute("android:theme", "@android:style/Theme.DeviceDefault")
-            }
-            application.appendChild(settings)
             val activity = manifest.createElement("activity").apply {
                 setAttribute("android:name", "me.dyskal.ytmrpc.DiscordOAuthActivity")
                 setAttribute("android:exported", "true")
@@ -48,17 +46,16 @@ private val discordResourcesPatch = resourcePatch {
     }
 
     finalize {
-        // Like the official settings patch, use Music's native settings_headers preference screen.
-        // Read the manifest after execution so GmsCore/clone patches' package changes are reflected.
-        val packageName = document("AndroidManifest.xml").use { it.documentElement.getAttribute("package") }
-        document("res/xml/settings_headers.xml").use { addDiscordSettingsPreference(it, packageName) }
+        if (!get("res/xml/morphe_prefs.xml").exists()) {
+            throw PatchException("Discord RPC requires the official Morphe Settings patch (Morphe Patches 1.47.0 or later). Apply both bundles together.")
+        }
     }
 }
 
 @Suppress("unused")
 val discordRpcPatch = bytecodePatch(
     name = "Discord rich presence",
-    description = "Shares music on Discord with OAuth2 + PKCE. Uses Dyskal's Discord application by default; sign in from YouTube Music Settings → Discord rich presence.",
+    description = "Adds Discord rich presence, cover art, and clickable music links. Configure it under Morphe → Misc → Discord rich presence. Requires official Morphe Settings (1.47.0+).",
     default = true
 ) {
     dependsOn(discordResourcesPatch)

@@ -7,15 +7,19 @@ import org.json.JSONObject;
 public final class DiscordPresence {
     private DiscordPresence() { }
 
-    public static JSONObject track(String appId, String title, String artist,
-                                   String videoId, long duration, long position, float speed, long now) throws Exception {
+    public static JSONObject track(String appId, DiscordTrack track, boolean artistHeadline, String artwork,
+                                   long duration, long position, float speed, long now) throws Exception {
         JSONObject activity = new JSONObject().put("application_id", appId)
-                .put("name", "YouTube Music").put("type", 2).put("details", truncate(title));
-        if (artist != null && !artist.isBlank()) activity.put("state", truncate(artist));
-        if (videoId != null && videoId.matches("[A-Za-z0-9_-]{11}")) {
-            String url = "https://music.youtube.com/watch?v=" + videoId;
-            activity.put("buttons", new JSONArray().put("Listen on YouTube Music"));
-            activity.put("metadata", new JSONObject().put("button_urls", new JSONArray().put(url)));
+                .put("name", truncate(artistHeadline && !track.artist.isEmpty() ? track.artist : "YouTube Music"))
+                .put("status_display_type", 0).put("type", 2).put("details", truncate(track.title))
+                .put("details_url", track.songUrl);
+        if (!track.artist.isEmpty()) activity.put("state", truncate(track.artist)).put("state_url", track.artistUrl);
+        activity.put("buttons", new JSONArray().put("Listen on YouTube Music"));
+        activity.put("metadata", new JSONObject().put("button_urls", new JSONArray().put(track.songUrl)));
+        if (artwork != null) {
+            activity.put("assets", new JSONObject().put("large_image", artwork)
+                    .put("large_text", truncate(track.album.isEmpty() ? track.title : track.album))
+                    .put("large_url", track.albumUrl));
         }
         // Discord cannot represent a non-1x progress bar accurately. Omit it in that case.
         if (duration > 0 && position >= 0 && position < duration && Math.abs(speed - 1f) < 0.001f) {

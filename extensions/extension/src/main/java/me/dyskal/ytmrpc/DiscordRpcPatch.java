@@ -19,12 +19,20 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Future;
+import java.util.concurrent.locks.ReentrantLock;
+import java.lang.ref.WeakReference;
 
 /** Application-level initialization covers normal and service-only playback starts. */
 public final class DiscordRpcPatch {
     public static final String DEFAULT_APPLICATION_ID = "1559278040175878146";
     private static final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor();
     private static final ExecutorService authorizationIO = Executors.newSingleThreadExecutor();
+    private static final ExecutorService artworkIO = Executors.newSingleThreadExecutor();
+    private static final DiscordExternalAssets externalAssets = new DiscordExternalAssets();
+    private static final ReentrantLock tokenRefreshLock = new ReentrantLock();
+    private static final CopyOnWriteArrayList<WeakReference<Runnable>> settingsListeners = new CopyOnWriteArrayList<>();
     private static final DiscordAuthorization authorization = new DiscordAuthorization();
     private static final AtomicReference<DiscordOAuth> exchangeRequest = new AtomicReference<>();
     private static final Object credentialsLock = new Object();
@@ -42,13 +50,34 @@ public final class DiscordRpcPatch {
     private static ScheduledFuture<?> ticker, idleClose, authorizationTimeout;
     private static String previousTrackKey;
     private static long previousStart;
+    private static Future<?> artworkTask;
+    private static final AtomicReference<DiscordOAuth> artworkTokenRequest = new AtomicReference<>();
+    private static long artworkRevision;
+    private static String artworkKey, artwork;
+    private static volatile String artworkWarning;
+    private static long artworkRetryAt;
 
     private DiscordRpcPatch() { }
 
     public static String getApplicationId() {
         return preferences == null ? DEFAULT_APPLICATION_ID : preferences.getString("application_id", DEFAULT_APPLICATION_ID);
     }
-    public static String status() { return status; }
+    public static String status() { return artworkWarning == null ? status : status + "\nCover: " + artworkWarning; }
+    public static boolean usesArtistHeadline() { return preferences == null || "artist".equals(preferences.getString("headline", "artist")); }
+    public static void addSettingsListener(Runnable listener) {
+        for (WeakReference<Runnable> entry : settingsListeners) if (entry.get() == null) settingsListeners.remove(entry);
+        settingsListeners.add(new WeakReference<>(listener));
+    }
+    private static void notifySettings() {
+        main.post(() -> {
+            for (WeakReference<Runnable> entry : settingsListeners) {
+                Runnable listener = entry.get();
+                if (listener == null) settingsListeners.remove(entry);
+                else listener.run();
+            }
+        });
+    }
+    private static void setStatus(String value) { status = value; notifySettings(); }
     public static boolean isAuthorized() { return authorized; }
     public static boolean isAuthorizing() { return authorization.isBusy(); }
     public static boolean isSharingEnabled() { return preferences != null && preferences.getBoolean("enabled", false); }
@@ -71,10 +100,10 @@ public final class DiscordRpcPatch {
                 DiscordAuthorization.Attempt restored = authorization.restore(saved.optJSONObject("pending"), System.currentTimeMillis());
                 if (restored != null) {
                     scheduleAuthorizationTimeout(restored);
-                    status = "Waiting for Discord authorization";
+                    setStatus("Waiting for Discord authorization");
                 } else {
                     if (saved.has("pending") && !authorization.isBusy()) removePending(null);
-                    status = authorized ? "Signed in; waiting for playback" : "Not connected";
+                    setStatus(authorized ? "Signed in; waiting for playback" : "Not connected");
                 }
                 reconcileSafely();
             } catch (Exception error) { report("Load Discord credentials", error); }
@@ -93,13 +122,14 @@ public final class DiscordRpcPatch {
     public static void setSharingEnabled(boolean enabled) {
         if (preferences == null) return;
         preferences.edit().putBoolean("enabled", enabled && authorized).apply();
+        notifySettings();
         if (!enabled) {
             DiscordGateway active = gateway;
             if (active != null) active.close();
         }
         worker.execute(() -> {
             reconcileSafely();
-            if (!enabled) status = authorized ? "Signed in; sharing is off" : "Not connected";
+            if (!enabled) setStatus(authorized ? "Signed in; sharing is off" : "Not connected");
         });
     }
 
@@ -112,6 +142,7 @@ public final class DiscordRpcPatch {
         }
         DiscordAuthorization.Attempt attempt = authorization.begin(appId, System.currentTimeMillis());
         if (attempt == null) return;
+        notifySettings();
         worker.execute(() -> {
             try {
                 if (!authorization.isCurrent(attempt)) return;
@@ -128,7 +159,8 @@ public final class DiscordRpcPatch {
                         authorization.finish(attempt);
                         preferences.edit().putBoolean("enabled", true).apply();
                     }
-                    if (gateway == null) status = "Signed in; waiting for playback";
+                    if (gateway == null) setStatus("Signed in; waiting for playback");
+                    else notifySettings();
                     reconcileSafely();
                     return;
                 }
@@ -141,10 +173,10 @@ public final class DiscordRpcPatch {
                         credentials = next;
                     }
                     preferences.edit().putBoolean("enabled", false).apply();
-                    stopGateway(); stopTicker(); cancel(idleClose); idleClose = null;
+                    stopGateway(); stopTicker(); cancelArtwork(); cancel(idleClose); idleClose = null;
                     scheduleAuthorizationTimeout(attempt);
                 }
-                status = "Waiting for Discord authorization";
+                setStatus("Waiting for Discord authorization");
                 main.post(() -> {
                     if (!authorization.isCurrent(attempt)) return;
                     try { context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
@@ -189,9 +221,10 @@ public final class DiscordRpcPatch {
         DiscordOAuth request = exchangeRequest.getAndSet(null);
         if (request != null) request.cancel();
         if (attempt == null) return;
+        notifySettings();
         worker.execute(() -> {
             try {
-                if (removePending(attempt)) { cancel(authorizationTimeout); status = "Authorization cancelled"; }
+                if (removePending(attempt)) { cancel(authorizationTimeout); setStatus("Authorization cancelled"); }
             } catch (Exception error) { report("Cancel authorization", error); }
         });
     }
@@ -206,12 +239,12 @@ public final class DiscordRpcPatch {
         preferences.edit().putBoolean("enabled", false).apply();
         synchronized (credentialsLock) { ++credentialsEpoch; }
         worker.execute(() -> {
-            stopGateway(); stopTicker(); cancel(idleClose); idleClose = null; cancel(authorizationTimeout);
+            stopGateway(); stopTicker(); cancelArtwork(); cancel(idleClose); idleClose = null; cancel(authorizationTimeout);
             try {
                 synchronized (credentialsLock) {
                     tokenStore.clear(); credentials = new JSONObject(); updateAuthorized();
                 }
-                status = "Not connected";
+                setStatus("Not connected");
             } catch (Exception error) { report("Forget Discord account", error); }
         });
     }
@@ -229,7 +262,7 @@ public final class DiscordRpcPatch {
                 authorization.finish(attempt);
             }
             cancel(authorizationTimeout);
-            status = "Signed in; play a track to share presence";
+            setStatus("Signed in; play a track to share presence");
             reconcileSafely();
         } catch (Exception error) { finishAuthorization(attempt, error); }
     }
@@ -265,6 +298,7 @@ public final class DiscordRpcPatch {
     private static JSONObject copyCredentials() throws Exception { return new JSONObject(credentials.toString()); }
     private static void updateAuthorized() {
         authorized = getApplicationId().equals(credentials.optString("app_id")) && !credentials.optString("access_token").isEmpty();
+        notifySettings();
     }
     private static JSONObject tokenData(String appId, JSONObject result, String oldRefresh) throws Exception {
         return new JSONObject().put("app_id", appId).put("access_token", result.getString("access_token"))
@@ -274,6 +308,12 @@ public final class DiscordRpcPatch {
 
     /** Called by the gateway's token I/O executor. No lock is held while HTTP runs. */
     private static String accessToken(boolean forceRefresh, AtomicReference<DiscordOAuth> requests) throws Exception {
+        tokenRefreshLock.lockInterruptibly();
+        try { return accessTokenLocked(forceRefresh, requests); }
+        finally { tokenRefreshLock.unlock(); }
+    }
+
+    private static String accessTokenLocked(boolean forceRefresh, AtomicReference<DiscordOAuth> requests) throws Exception {
         if (!isSharingEnabled() || Thread.currentThread().isInterrupted()) {
             throw new DiscordFailure(DiscordFailure.Kind.CANCELLED, "Token request cancelled");
         }
@@ -310,7 +350,7 @@ public final class DiscordRpcPatch {
 
     private static void reconcile() throws Exception {
         if (!isSharingEnabled() || !authorized) {
-            stopTicker(); cancel(idleClose); idleClose = null; stopGateway(); return;
+            stopTicker(); cancelArtwork(); cancel(idleClose); idleClose = null; stopGateway(); return;
         }
         MediaMetadata track = metadata;
         PlaybackState state = playback;
@@ -326,10 +366,11 @@ public final class DiscordRpcPatch {
         if (duration > 0 && position >= duration) playing = false;
         if (!playing) {
             stopTicker();
+            cancelArtwork();
             if (gateway != null) {
                 gateway.update(DiscordPresence.update(null), "clear");
                 if (idleClose == null) idleClose = worker.schedule(() -> {
-                    stopGateway(); idleClose = null; status = "Signed in; waiting for playback";
+                    stopGateway(); idleClose = null; setStatus("Signed in; waiting for playback");
                 }, 60, TimeUnit.SECONDS);
             }
             return;
@@ -346,32 +387,22 @@ public final class DiscordRpcPatch {
                     if (request != null) request.cancel();
                 }
             }, new DiscordGateway.StatusListener() {
-                @Override public void changed(String value) { if (epoch == connectionEpoch) status = value; }
+                @Override public void changed(String value) { if (epoch == connectionEpoch) setStatus(value); }
                 @Override public void failed(DiscordFailure error) {
                     worker.execute(() -> {
                         if (epoch != connectionEpoch) return;
-                        preferences.edit().putBoolean("enabled", false).apply();
-                        stopGateway(); stopTicker(); cancel(idleClose); idleClose = null;
-                        if (error.kind == DiscordFailure.Kind.AUTHORIZATION) {
-                            try {
-                                synchronized (credentialsLock) {
-                                    JSONObject next = copyCredentials();
-                                    for (String key : new String[]{"app_id", "access_token", "refresh_token", "expires_at"}) next.remove(key);
-                                    tokenStore.write(next); credentials = next; ++credentialsEpoch; updateAuthorized();
-                                }
-                            } catch (Exception storageError) { report("Clear rejected authorization", storageError); }
-                        }
-                        report("Discord connection", error);
+                        connectionFailed(error);
                     });
                 }
             });
             gateway.start();
         }
-        String artist = track.getString(MediaMetadata.METADATA_KEY_ARTIST);
-        String id = track.getString(MediaMetadata.METADATA_KEY_MEDIA_ID);
+        DiscordTrack snapshot = DiscordTrack.from(track);
+        ensureArtwork(snapshot);
         long wallNow = System.currentTimeMillis();
-        JSONObject activity = DiscordPresence.track(getApplicationId(), title, artist, id, duration, position, state.getPlaybackSpeed(), wallNow);
-        String trackKey = title + '\n' + artist + '\n' + id + '\n' + duration + '\n' + state.getPlaybackSpeed();
+        JSONObject activity = DiscordPresence.track(getApplicationId(), snapshot, usesArtistHeadline(), artwork,
+                duration, position, state.getPlaybackSpeed(), wallNow);
+        String trackKey = snapshot.key() + '\n' + artwork + '\n' + usesArtistHeadline() + '\n' + duration + '\n' + state.getPlaybackSpeed();
         boolean timed = activity.has("timestamps");
         long start = timed ? wallNow - position : -1;
         if (!trackKey.equals(previousTrackKey) || Math.abs(start - previousStart) > 2000) { previousTrackKey = trackKey; previousStart = start; }
@@ -384,6 +415,110 @@ public final class DiscordRpcPatch {
     private static void stopTicker() { cancel(ticker); ticker = null; }
     private static void cancel(ScheduledFuture<?> task) { if (task != null) task.cancel(false); }
     private static void report(String operation, Throwable error) {
-        DiscordDiagnostics.failure(operation, error); status = operation + ": " + DiscordFailure.describe(error);
+        DiscordDiagnostics.failure(operation, error); setStatus(operation + ": " + DiscordFailure.describe(error));
+    }
+
+    /** Normal preference save: changing applications explicitly disconnects and requires a new grant. */
+    public static boolean setApplicationId(String value) {
+        String id = value == null ? "" : value.trim();
+        if (!DiscordOAuth.isValidApplicationId(id) || preferences == null) return false;
+        if (id.equals(getApplicationId())) return true;
+        cancelAuthorization();
+        DiscordGateway active = gateway;
+        if (active != null) active.close();
+        preferences.edit().putBoolean("enabled", false).apply();
+        worker.execute(() -> {
+            stopGateway(); stopTicker(); cancelArtwork(); cancel(idleClose); idleClose = null;
+            try {
+                synchronized (credentialsLock) {
+                    tokenStore.clear(); credentials = new JSONObject(); ++credentialsEpoch;
+                    preferences.edit().putString("application_id", id).putBoolean("enabled", false).apply();
+                    updateAuthorized();
+                }
+                setStatus("Application ID saved; connect to Discord");
+            } catch (Exception error) { report("Save application ID", error); }
+        });
+        return true;
+    }
+
+    public static void setArtistHeadline(boolean artist) {
+        if (preferences == null) return;
+        preferences.edit().putString("headline", artist ? "artist" : "application").apply();
+        notifySettings(); worker.execute(DiscordRpcPatch::reconcileSafely);
+    }
+
+    private static void ensureArtwork(DiscordTrack track) {
+        String appId = getApplicationId();
+        String key = appId + '\n' + track.key();
+        if (!key.equals(artworkKey)) {
+            cancelArtwork(); artworkKey = key;
+        }
+        if (track.artworkUrl == null) {
+            String warning = "Playback metadata has no public cover URL or YouTube video ID";
+            if (!warning.equals(artworkWarning)) { artworkWarning = warning; notifySettings(); }
+            return;
+        }
+        String cached = externalAssets.cached(appId, track.artworkUrl);
+        if (cached != null) { artwork = cached; return; }
+        if (artworkTask != null || System.currentTimeMillis() < artworkRetryAt) return;
+        if (!externalAssets.canRequest(appId, track.artworkUrl)) {
+            DiscordFailure failure = externalAssets.cachedFailure(appId, track.artworkUrl);
+            if (failure != null && !failure.getMessage().equals(artworkWarning)) {
+                artworkWarning = failure.getMessage(); notifySettings();
+            }
+            return;
+        }
+        long revision = artworkRevision;
+        artworkTask = artworkIO.submit(() -> {
+            try {
+                String token = accessToken(false, artworkTokenRequest);
+                String resolved = externalAssets.resolve(appId, token, track.artworkUrl);
+                worker.execute(() -> {
+                    if (revision != artworkRevision || !key.equals(artworkKey)) return;
+                    artworkTask = null; artwork = resolved; artworkWarning = null;
+                    notifySettings(); reconcileSafely();
+                });
+            } catch (Exception error) {
+                worker.execute(() -> {
+                    if (revision != artworkRevision || !key.equals(artworkKey)) return;
+                    artworkTask = null;
+                    if (error instanceof DiscordFailure && ((DiscordFailure) error).kind == DiscordFailure.Kind.CANCELLED) return;
+                    if (error instanceof DiscordFailure && ((DiscordFailure) error).kind == DiscordFailure.Kind.AUTHORIZATION) {
+                        connectionFailed((DiscordFailure) error); return;
+                    }
+                    DiscordDiagnostics.failure("Artwork lookup", error);
+                    artworkRetryAt = System.currentTimeMillis() + Math.max(60_000,
+                            error instanceof DiscordFailure ? ((DiscordFailure) error).retryAfterMillis : 0);
+                    artworkWarning = DiscordFailure.describe(error); notifySettings();
+                });
+            }
+        });
+    }
+
+    private static void cancelArtwork() {
+        boolean changed = artworkKey != null || artworkWarning != null;
+        ++artworkRevision;
+        if (artworkTask != null) artworkTask.cancel(true);
+        artworkTask = null; artworkKey = null; artwork = null; artworkWarning = null;
+        artworkRetryAt = 0;
+        externalAssets.cancel();
+        DiscordOAuth token = artworkTokenRequest.getAndSet(null);
+        if (token != null) token.cancel();
+        if (changed) notifySettings();
+    }
+
+    private static void connectionFailed(DiscordFailure error) {
+        preferences.edit().putBoolean("enabled", false).apply();
+        stopGateway(); stopTicker(); cancelArtwork(); cancel(idleClose); idleClose = null;
+        if (error.kind == DiscordFailure.Kind.AUTHORIZATION) {
+            try {
+                synchronized (credentialsLock) {
+                    JSONObject next = copyCredentials();
+                    for (String key : new String[]{"app_id", "access_token", "refresh_token", "expires_at"}) next.remove(key);
+                    tokenStore.write(next); credentials = next; ++credentialsEpoch; updateAuthorized();
+                }
+            } catch (Exception storageError) { report("Clear rejected authorization", storageError); }
+        }
+        report("Discord connection", error);
     }
 }
