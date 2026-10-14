@@ -26,7 +26,7 @@ In the Discord Developer Portal, application `1559278040175878146` must have Soc
 
 To use another application, configure it the same way and edit **Discord application ID** in the Discord preference screen. Saving a different ID disconnects the current login; tap **Connect with Discord** to authorize the new application.
 
-Morphe's add-on preference API inserts a nested screen into **Misc**, using standard `PreferenceScreen`, `EditTextPreference`, `SwitchPreference`, and `ListPreference` components. There is no custom settings activity or extra top-level Settings entry. The rows are self-managed and stored in this add-on's private preferences, outside Morphe's settings import/export.
+Morphe's add-on preference API inserts a nested screen into **Misc**. The application-ID input and headline selector use Morphe's own `ResettableEditTextPreference` and `CustomDialogListPreference`, matching SponsorBlock's rounded, themed dialogs. About/licenses uses Morphe's `CustomDialog` too. The rows are self-managed and stored in this add-on's private preferences, outside Morphe's settings import/export.
 
 Only one installed copy should handle the callback scheme. Credentials and pending PKCE state are encrypted using Android Keystore AES-GCM. Disabling sharing retains login; **Disconnect and forget account** deletes credentials.
 
@@ -34,7 +34,7 @@ No repatching is needed to change the application ID or appearance. Same-applica
 
 ## Behavior
 
-- Song title, artist, listening activity, progress at 1× playback speed, and direct title/artist/album cover links. The add-on captures Music's current native queue renderer and player video ID, rather than relying exclusively on MediaSession metadata (9.20.53 omits IDs and artwork URI there).
+- Song title, artist, album label, listening activity, progress at 1× playback speed, and direct song/artist/album links. The title opens the current song; the cover opens its album. Discord exposes no independent URL for the album label (`assets.large_text`); it remains plain text. The add-on captures Music's current native queue renderer and player video ID, rather than relying exclusively on MediaSession metadata (9.20.53 omits IDs and artwork URI there).
 - Queue byline navigation endpoints supply real artist channel IDs and album browse IDs; title links use the current player video ID. Missing IDs omit a hyperlink instead of substituting a name search. Upcoming/unrelated queue/menu entries are not used to guess an artist or album.
 - The native renderer supplies the largest public cover URL. MediaSession image URIs and a YouTube-thumbnail fallback remain secondary sources. Discord's external-assets API resolves URLs into `mp:external` references. A bounded per-application cache avoids repeated lookups; pause, skip, logout, and account changes cancel stale work. Artwork errors leave text presence working and are shown in the connection summary.
 - **Profile headline** defaults to **Artist**, replacing “YouTube Music” under your Discord name. Select **YouTube Music** to use the application name. Missing artist metadata falls back to the application name.
@@ -87,7 +87,7 @@ SDK DEX/hierarchy checks do not run ART's full register-type verifier. A regress
 .\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PmorpheBundle=C:\path\official-patches.mpp" "-PdiscordOutput=C:\existing-folder\music-discord-unsigned.apk"
 ```
 
-Device checks for this update: OAuth's foreground return, native metadata capability flags, cover rendering, direct title/artist/album URLs, and rapid track skips. `Native track metadata: video=..., artist=..., album=..., cover=...` logs presence of fields without dumping renderer data. If cover lookup starts but fails, **Connection status** reports its Discord artwork HTTP error separately. Discord clients can differ in hyperlink rendering.
+Device checks for this update: rounded application-ID/headline/About dialogs, cover clicks opening the album, direct title/artist URLs, OAuth's foreground return, and rapid track skips. `Native track metadata: video=..., artist=..., album=..., cover=...` logs presence of fields without dumping renderer data. If cover lookup starts but fails, **Connection status** reports its Discord artwork HTTP error separately. Discord clients can differ in hyperlink rendering.
 
 Diagnostics use controlled error categories, HTTP/gateway status codes, and exception type names. Tokens, authorization codes, raw server bodies, and gateway frames are not logged:
 

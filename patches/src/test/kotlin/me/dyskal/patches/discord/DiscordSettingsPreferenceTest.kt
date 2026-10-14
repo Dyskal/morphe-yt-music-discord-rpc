@@ -9,7 +9,7 @@ import kotlin.test.assertFailsWith
 
 class DiscordSettingsPreferenceTest {
     @Test
-    fun `add-on declaration targets Morphe Misc and uses standard preference components`() {
+    fun `add-on declaration targets Morphe Misc and uses its themed preference components`() {
         val xml = """<morphe-add-on-preferences xmlns:android="http://schemas.android.com/apk/res/android"><screen key="other"><Preference android:key="other_addon"/></screen></morphe-add-on-preferences>"""
         val document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray()))
         addDiscordPreferences(document)
@@ -19,9 +19,11 @@ class DiscordSettingsPreferenceTest {
         val screen = target.firstChild as Element
         assertEquals("PreferenceScreen", screen.tagName)
         assertEquals("dyskal_discord_rpc_settings", screen.getAttribute("android:key"))
-        assertEquals(1, screen.getElementsByTagName("EditTextPreference").length)
+        assertEquals(1, screen.getElementsByTagName(MORPHE_TEXT_PREFERENCE).length)
+        assertEquals(0, screen.getElementsByTagName("EditTextPreference").length)
         assertEquals(1, screen.getElementsByTagName("SwitchPreference").length)
-        assertEquals(1, screen.getElementsByTagName("ListPreference").length)
+        assertEquals(1, screen.getElementsByTagName(MORPHE_LIST_PREFERENCE).length)
+        assertEquals(0, screen.getElementsByTagName("ListPreference").length)
         assertEquals(0, screen.getElementsByTagName("intent").length)
         for (i in 0 until screen.childNodes.length) {
             assertEquals("false", (screen.childNodes.item(i) as Element).getAttribute("android:persistent"))

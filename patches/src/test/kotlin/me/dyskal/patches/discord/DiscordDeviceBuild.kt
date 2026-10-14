@@ -6,8 +6,11 @@ import app.morphe.patcher.apk.ApkUtils.applyTo
 import app.morphe.patcher.dex.SdkDexVerifier
 import app.morphe.patcher.patch.loadPatchesFromJar
 import kotlinx.coroutines.runBlocking
+import com.android.tools.smali.dexlib2.Opcodes
+import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile
 import java.io.File
 import java.nio.file.Files
+import java.nio.ByteBuffer
 
 /** Optional real-APK check, applying the official framework and this add-on together. */
 fun main(arguments: Array<String>) {
@@ -35,6 +38,20 @@ fun main(arguments: Array<String>) {
             }
         }
         val patched = patcher.get()
+        // SDK hierarchy checks do not resolve XML classes or reflective dialog APIs.
+        // Check the actual emitted host extension from the supplied official bundle.
+        val uiTypes = setOf(MORPHE_TEXT_PREFERENCE, MORPHE_LIST_PREFERENCE, "app.morphe.extension.shared.ui.CustomDialog")
+            .map { "L${it.replace('.', '/')};" }.toSet()
+        val uiClasses = workspace.resolve("patched").toFile().walkTopDown().filter { it.extension == "dex" }
+            .flatMap { DexBackedDexFile(Opcodes.getDefault(), ByteBuffer.wrap(it.readBytes())).classes.asSequence() }
+            .filter { it.type in uiTypes }.associateBy { it.type }
+        require(uiClasses.keys.containsAll(uiTypes)) { "Official Settings extension is missing themed Discord UI components" }
+        val dialog = uiClasses.getValue("Lapp/morphe/extension/shared/ui/CustomDialog;")
+        require(dialog.methods.any { it.name == "create" && it.parameterTypes.map(CharSequence::toString) == listOf(
+            "Landroid/content/Context;", "Ljava/lang/CharSequence;", "Ljava/lang/CharSequence;", "Landroid/widget/EditText;",
+            "Ljava/lang/CharSequence;", "Ljava/lang/Runnable;", "Ljava/lang/Runnable;", "Ljava/lang/CharSequence;", "Ljava/lang/Runnable;", "Z"
+        ) && it.returnType == "Landroid/util/Pair;" }) { "Official Settings extension is missing the themed dialog API" }
+        println("Morphe themed preference/dialog APIs verified")
         if (output == null) println("Discord patch applied and DEX verified: $workspace")
         else {
             patched.applyTo(output)

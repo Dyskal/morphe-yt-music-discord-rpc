@@ -7,7 +7,7 @@ import static org.junit.Assert.*;
 public class DiscordPresenceTest {
     private static final String APP = "1559278040175878146";
 
-    @Test public void artistHeadlineAndTitleArtistAlbumLinksUseGatewayFields() throws Exception {
+    @Test public void artistHeadlineAndSongArtistCoverLinksUseGatewayFields() throws Exception {
         DiscordTrack track = new DiscordTrack("Song", "Artist & Guest", "Album", "dQw4w9WgXcQ", null,
                 "UCs-QBT4qkj_YiQw1ZntDO3g", "MPREb_exampleAlbum");
         JSONObject activity = DiscordPresence.track(APP, track, true, "mp:external/cover", 180_000, 30_000, 1, 1_000_000);
@@ -19,9 +19,23 @@ public class DiscordPresenceTest {
         JSONObject assets = activity.getJSONObject("assets");
         assertEquals("mp:external/cover", assets.getString("large_image"));
         assertEquals("Album", assets.getString("large_text"));
-        assertEquals("https://music.youtube.com/browse/MPREb_exampleAlbum", assets.getString("large_url"));
+        assertEquals(track.albumUrl, assets.getString("large_url"));
+        assertEquals(1, activity.getJSONArray("buttons").length());
+        assertEquals(track.songUrl, activity.getJSONObject("metadata").getJSONArray("button_urls").getString(0));
         assertEquals(970_000, activity.getJSONObject("timestamps").getLong("start"));
         assertEquals(1_150_000, activity.getJSONObject("timestamps").getLong("end"));
+    }
+
+    @Test public void albumCoverLinkDoesNotRequireAVideoId() throws Exception {
+        DiscordTrack track = new DiscordTrack("Song", "Artist", "Album", null, null, null, "MPREb_exampleAlbum");
+        JSONObject activity = DiscordPresence.track(APP, track, false, "mp:external/cover", 0, -1, 1, 0);
+        assertEquals("Album", activity.getJSONObject("assets").getString("large_text"));
+        assertEquals(track.albumUrl, activity.getJSONObject("assets").getString("large_url"));
+        assertFalse(activity.has("details_url"));
+        assertFalse(activity.has("buttons")); assertFalse(activity.has("metadata"));
+        JSONObject missingAlbum = DiscordPresence.track(APP,
+                new DiscordTrack("Song", "Artist", "Album", "dQw4w9WgXcQ", null), false, "mp:external/cover", 0, -1, 1, 0);
+        assertFalse(missingAlbum.getJSONObject("assets").has("large_url"));
     }
 
     @Test public void applicationHeadlineAndMissingArtistHaveSafeFallbacks() throws Exception {

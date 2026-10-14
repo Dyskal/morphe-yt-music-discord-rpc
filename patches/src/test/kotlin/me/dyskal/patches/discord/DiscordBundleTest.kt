@@ -32,7 +32,7 @@ class DiscordBundleTest {
             assertTrue(hooks.methods.any { it.name == name })
         }
         assertTrue(classes.containsKey("Lokhttp3/OkHttpClient;"))
-        assertTrue(classes.keys.none { it.startsWith("Lapp/morphe/extension/") }, "Standalone bundle must not rely on upstream runtime classes")
+        assertTrue(classes.keys.none { it.startsWith("Lapp/morphe/extension/") }, "Add-on must reuse the host's themed UI, not bundle duplicate Morphe classes")
     }
 
     @Test

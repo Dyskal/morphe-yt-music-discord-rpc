@@ -22,6 +22,7 @@ public final class DiscordPresence {
         if (artwork != null) {
             activity.put("assets", new JSONObject().put("large_image", artwork)
                     .put("large_text", truncate(track.album.isEmpty() ? track.title : track.album)));
+            // The third listening-activity line is large_text; Discord has no independent URL for it.
             if (track.albumUrl != null) activity.getJSONObject("assets").put("large_url", track.albumUrl);
         }
         // Discord cannot represent a non-1x progress bar accurately. Omit it in that case.

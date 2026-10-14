@@ -1,6 +1,6 @@
 package me.dyskal.ytmrpc;
 
-import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -11,11 +11,13 @@ import android.preference.PreferenceManager;
 import android.preference.SwitchPreference;
 import android.text.InputType;
 import android.util.AttributeSet;
+import android.util.Pair;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 
-/** Binds standard Morphe-hosted preference rows to this add-on's private runtime settings. */
+/** Binds Morphe's themed preference rows to this add-on's private runtime settings. */
 @SuppressWarnings({"deprecation", "unused"})
 public final class DiscordPreferences extends Preference {
     private EditTextPreference applicationId;
@@ -108,7 +110,19 @@ public final class DiscordPreferences extends Preference {
             DiscordDiagnostics.failure("Read notices", error);
             text = "Notices unavailable. Source: https://github.com/Dyskal/morphe-yt-music-discord-rpc";
         }
-        new AlertDialog.Builder(getContext()).setTitle("Dyskal Discord RPC — About")
-                .setMessage(text).setPositiveButton(android.R.string.ok, null).show();
+        try {
+            // Reuse the host's dialog, including its rounded buttons and current theme.
+            // Reflection keeps the official extension compile-only and avoids bundling duplicate Morphe classes.
+            Class<?> dialogs = Class.forName("app.morphe.extension.shared.ui.CustomDialog", true, getContext().getClassLoader());
+            Pair<?, ?> result = (Pair<?, ?>) dialogs.getMethod("create", Context.class, CharSequence.class,
+                    CharSequence.class, EditText.class, CharSequence.class, Runnable.class, Runnable.class,
+                    CharSequence.class, Runnable.class, boolean.class)
+                    .invoke(null, getContext(), "Dyskal Discord RPC — About", text, null,
+                            getContext().getString(android.R.string.ok), (Runnable) () -> {}, null, null, null, true);
+            ((Dialog) result.first).show();
+        } catch (Exception error) {
+            DiscordDiagnostics.failure("Open Morphe notices dialog", error);
+            Toast.makeText(getContext(), "Could not open Morphe's notices dialog", Toast.LENGTH_SHORT).show();
+        }
     }
 }
