@@ -1,10 +1,10 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "1.0.0-dev.2",
+  "version": "1.0.0-dev.3",
   "patches": [
     {
       "name": "Discord rich presence",
-      "description": "Shares music on Discord with OAuth2 + PKCE. Uses Dyskal's Discord application by default; sign in from YouTube Music Settings → Discord rich presence.",
+      "description": "Adds Discord rich presence, cover art, and clickable music links. Configure it under Morphe → Misc → Discord rich presence. Requires official Morphe Settings (1.47.0+).",
       "default": true,
       "category": null,
       "compatiblePackages": [

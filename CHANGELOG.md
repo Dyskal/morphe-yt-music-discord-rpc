@@ -1,3 +1,9 @@
+## [1.0.0-dev.3](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2026-10-14)
+
+### ✨ New Features
+
+* add artwork and music links with Morphe-native preferences ([8c47d60](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/8c47d60661383626f497b4fcf18afbbd864a62f7))
+
 ## [1.0.0-dev.2](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.1...v1.0.0-dev.2) (2026-10-13)
 
 ### 🐛 Bug Fixes

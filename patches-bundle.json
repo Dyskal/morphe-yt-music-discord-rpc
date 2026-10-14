@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-13T19:48:41",
-  "description": "## [1.0.0-dev.2](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.1...v1.0.0-dev.2) (2026-10-13)\n\n### 🐛 Bug Fixes\n\n* harden Discord RPC authentication and background lifecycle ([f16bc03](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/f16bc03b79bd7b67d801b5b785f6694df26a3baa))\n\n### ✨ New Features\n\n* configure Discord application ID in app settings ([a88bff3](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/a88bff32388fc3c768b5a243648168b302c692a3))\n* configure Discord application ID through Manager patch options ([14af5b1](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/14af5b1b4bb92fa9efde5b59124db23d018137ed))\n* default Discord RPC to Dyskal application ([e9cfb96](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/e9cfb966c843bed8cb053db2d196679acc774a05))\n* open Discord RPC controls from YouTube Music settings ([43a7a1f](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/43a7a1f899f22c5b9125c97d118961de5e8f361c))",
-  "download_url": "https://github.com/Dyskal/morphe-yt-music-discord-rpc/releases/download/v1.0.0-dev.2/patches-1.0.0-dev.2.mpp",
+  "created_at": "2026-10-14T19:02:25",
+  "description": "## [1.0.0-dev.3](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2026-10-14)\n\n### ✨ New Features\n\n* add artwork and music links with Morphe-native preferences ([8c47d60](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/8c47d60661383626f497b4fcf18afbbd864a62f7))",
+  "download_url": "https://github.com/Dyskal/morphe-yt-music-discord-rpc/releases/download/v1.0.0-dev.3/patches-1.0.0-dev.3.mpp",
   "signature_download_url": "",
-  "version": "1.0.0-dev.2"
+  "version": "1.0.0-dev.3"
 }
