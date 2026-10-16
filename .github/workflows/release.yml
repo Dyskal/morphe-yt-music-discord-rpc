@@ -46,7 +46,7 @@ jobs:
         if: steps.release.outputs.new_release_published == 'true'
         uses: actions/attest-build-provenance@v4
         with:
-          subject-name: 'Morphe Patches ${{ steps.release.outputs.new_release_git_tag }}'
+          subject-name: 'Dyskal YouTube Music Discord RPC ${{ steps.release.outputs.new_release_git_tag }}'
           subject-path: patches/build/libs/patches-*.mpp
 
       # Always verify compilation when semantic-release did not publish a release.
@@ -55,4 +55,4 @@ jobs:
         if: steps.release.outputs.new_release_published != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew :patches:buildAndroid clean --no-daemon
+        run: ./gradlew :patches:buildAndroid :patches:test --no-daemon

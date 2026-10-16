@@ -1,1 +1,1 @@
-// Root build configuration for morphe-patches-template
+// Standalone patch bundle based on the official Morphe patches template.

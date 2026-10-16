@@ -1,91 +1,72 @@
-# 👋🧩 Morphe Patches template
+# Dyskal YouTube Music Discord RPC
 
-Template repository for Morphe Patches.
+A [Morphe](https://morphe.software) add-on that shares what you're listening to on YouTube Music as your Discord activity.
 
-## ❓ About
+## Features
 
-Patches for apps I like.
+- Song title, artist, album name, and cover art.
+- Click the title to open the song, the artist to open their page, or the cover to open the album.
+- Playback progress at normal speed.
+- Choose the artist or **YouTube Music** as your profile headline.
+- Clears your activity when playback pauses or stops, and reconnects automatically when you listen again.
 
-<!-- TODO: Update this about section with a brief introduction/summary about this repo and what it offers. -->
+## Install
 
-### How to use these patches
+1. [Add this patch source to Morphe](https://morphe.software/add-source?github=Dyskal/morphe-yt-music-discord-rpc).
+2. Apply it alongside **official Morphe Patches 1.47.0 or later**, including the **Settings** patch.
+3. Select **Discord rich presence**, patch a supported YouTube Music APK, and install it.
 
-Click here to add these patches to Morphe: https://morphe.software/add-source?github=xyz-user/xyz-patches
+To receive development builds, enable prereleases in the patch-source settings.
+
+## Connect to Discord
+
+1. Open YouTube Music → **Settings → Morphe → Misc → Discord rich presence**.
+2. Tap **Connect with Discord** and authorize in the Discord app, or in a browser tab if Discord isn't available.
+3. Enable activity sharing in Discord and play some music.
+
+The default Discord application is ready to use; no application ID or developer account is required.
+
+### Settings
+
+- **Share currently playing music:** turn sharing on or off without signing out.
+- **Profile headline:** show the artist name or **YouTube Music**.
+- **Reconnect:** reconnect using your saved sign-in.
+- **Disconnect and forget account:** sign out and remove saved credentials.
+- **Discord application ID:** optionally use your own application; see [custom application setup](CONTRIBUTING.md#custom-discord-application).
+
+Changes take effect without repatching. Sign-in credentials are encrypted on your device.
+
+## Troubleshooting
+
+Check **Connection status** on the Discord settings page if sharing or artwork stops working. Confirm Discord's activity sharing is enabled, then try **Reconnect**. If asked to sign in again, disconnect and reconnect your account.
+
+Activity changes can take a few seconds to appear, and link behavior can vary between Discord clients.
 
 ## 🩹 Patches list
 
-<!-- PATCHES_START EXPANDED -->
+<!-- PATCHES_START -->
+> **[v1.0.0-dev.8](https://github.com/Dyskal/morphe-yt-music-discord-rpc/releases/tag/v1.0.0-dev.8)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;1 patches total
+<details open>
+<summary>📦 YouTube Music&nbsp;&nbsp;•&nbsp;&nbsp;1 patch</summary>
+<br>
 
-<!-- Do not modify this section by hand. The patch list is generated when release.yml creates a new release.
-     
-     If you wish for the patches list to be collapsed, then remove the word 'EXPANDED' from the comment tag above.
+**🎯 Supported versions:**
 
-     If you wish to manually keep this list updated then remove the PATCHES_START and PATCHES_END 
-     comment blocks entirely. -->
+| 9.40.51 | 9.39.52 | 9.38.51 | 9.20.53 | 9.15.51 |
+| :---: | :---: | :---: | :---: | :---: |
 
-#### A list of your patches will automatically be shown here after your first patches release is created.
+| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
+|----------|----------------|-----------|
+| [Discord rich presence](#discord-rich-presence) | Adds Discord rich presence, cover art, and clickable music links. Configure it under Morphe → Misc → Discord rich presence. Requires official Morphe Settings (1.47.0+). |  |
 
-&nbsp;
+</details>
 
-## 🚀 Getting development started
-
-To start using this template, follow these steps:
-
-1. [Setup](https://github.com/MorpheApp/morphe-documentation/blob/main/docs/morphe-development/README.md) your development environment including adding a GitHub PAT as described [here](https://github.com/MorpheApp/morphe-patcher/blob/main/docs/2_1_setup.md#-prepare-the-environment).
-2. [Create a new repository using this template](https://github.com/new?template_name=morphe-patches-template&template_owner=MorpheApp). Select create a new repository, and **enable 'Include all branches'** 
-3. Enable "Allow GitHub Actions to create and approve pull requests" in your repo Settings > Actions > General > Workflow permissions
-4. Update the [build.gradle.kts](patches/build.gradle.kts) file (Specifically, the 
-   [group of the project](patches/build.gradle.kts#L1), and the [About](patches/build.gradle.kts#L6-L11))
-5. Update the [README.md](README.md) file to be specific of your repo, and update the links in the [issue templates](.github/ISSUE_TEMPLATE).
-6. Choose a name for your patches project. Keep in mind you must use a name that does not 
-   imply authorship by the Morphe open source project. If unsure, then simply name these
-   patches after yourself ("UserXYZ Morphe patches"). See the [NOTICE](NOTICE) for details. 
-7. (Optional): Add `patches-bundle.png` to the project if you want a custom icon to show in
-   Morphe Manager instead of your GitHub profile avatar.
-
-🎉 You are now ready to start creating patches!
-
-## 🧑‍💻 Dev usage
-
-To develop and release your Patches using this template:
-
-- **Make all changes to the `dev` branch.**
-- For local development work build your patches using the gradle task `./gradlew buildAndroid` to generate the mpp file found in `patches/build/libs/patches-*.mpp`. Apply your patches locally using Morphe Desktop tool like any other patch bundle.
-- Always use [Semantic commit](https://kapeli.com/cheat_sheets/Semantic_Commits.docset/Contents/Resources/Documents/index) messages for commits. To keep it simple use only 3 commit message types: 
-  - `feat: Added a new feature`
-  - `fix: Some problem now fixed`
-  - `chore: Random change you do not want in the user facing changelog`
-- Commits of `fix:` and `feat:` will automatically generate new pre-releases and `chore:` will not create a new release.
-- Users can apply your dev branch releases by enabling `pre-release` in Morphe Manager patch sources.
-- When your dev branch is ready, and you want a stable release, merge dev branch to main (do not squash, and only merge).
-- **Always use semantic release (release.yml)**. Do not manually upload or create releases by hand
-  because many files must be updated and release.yml handles everything.
-
-## 🤓 Tips
-- See the [patcher documentation](https://github.com/MorpheApp/morphe-patcher/blob/main/docs/1_patcher_intro.md) for more examples of creating patches and fingerprints.
-- Do not use AI to create new release scripts. The `release.yml` here already handles everything.
-  If you need something custom with your releases then modify the existing `release.yml`
-  and `.releaserc` instead of writing everything new from scratch.
-- Do not manually edit or manually commit any generated files such as: `patches-list.json`,
-  `patches-bundle.json`, `CHANGELOG.md`.  These files will be automatically updated by `release.yml`.
-- Do not force push any semantic release commits as that will break all future releases.
-  If you need to fix a broken release, it's always easiest to create a new release instead of 
-  fixing an existing release.
-
-
-<!-- The patches end tag is intentionally placed here so the first release will clean up 
-     this readme of all developer instructions above. -->
 <!-- PATCHES_END -->
 
-### 🛠️ Building locally
+## Development
 
-- Run `./gradlew buildAndroid`
-- The built patches .mpp file is found in `patches/build/libs/patches-*.mpp`
-- Patch the mpp file using [Morphe-Desktop](https://github.com/MorpheApp/morphe-desktop)
-  like any other patch bundle.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions, diagnostics, and the release workflow.
 
-See the [Morphe documentation](https://github.com/MorpheApp/morphe-documentation) for more information.
+## License and attribution
 
-## 📜 License
-
-UserXYZ Patches are licensed under the [GNU General Public License v3.0](LICENSE)
+[GPLv3](LICENSE), with the additional terms in [NOTICE](NOTICE). Based on the [official Morphe patches template](https://github.com/MorpheApp/morphe-patches-template). Upstream fingerprints retain their [copyright and notice](UPSTREAM-NOTICE). Dependencies and source references are documented in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

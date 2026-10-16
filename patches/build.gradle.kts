@@ -1,15 +1,14 @@
-group = "app.template"
+group = "me.dyskal"
 
 patches {
-    // TODO: Update this section with your project details.
     about {
-        name = "UserXYZ Patches"
-        description = "Patches for apps I like"
-        source = "git@github.com:UserXYZ/morphe-patches.git"
-        author = "Awesome dev"
+        name = "Dyskal YouTube Music Discord RPC"
+        description = "Discord rich presence add-on for Morphe YouTube Music"
+        source = "https://github.com/Dyskal/morphe-yt-music-discord-rpc"
+        author = "Dyskal"
         contact = "na"
-        website = "na"
-        license = "GPLv3"
+        website = "https://github.com/Dyskal/morphe-yt-music-discord-rpc"
+        license = "GPLv3 with the additional terms in NOTICE"
     }
 }
 
@@ -20,9 +19,35 @@ val patchListGeneratorClasspath = configurations.create("patchListGeneratorClass
 dependencies {
     compileOnly(libs.gson)
     patchListGeneratorClasspath(libs.gson)
+    testImplementation(kotlin("test"))
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.1")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks {
+    withType<Jar>().configureEach {
+        from(rootProject.file("LICENSE"), rootProject.file("NOTICE"), rootProject.file("UPSTREAM-NOTICE"),
+            rootProject.file("THIRD-PARTY-NOTICES.md"))
+    }
+    test {
+        useJUnitPlatform()
+        dependsOn(":extensions:extension:testDebugUnitTest")
+    }
+    register<JavaExec>("validateDiscord") {
+        description = "Applies the standalone Discord patch to a supplied APK with SDK DEX verification"
+        group = "verification"
+        dependsOn("testClasses")
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass.set("me.dyskal.patches.discord.DiscordDeviceBuildKt")
+        doFirst {
+            val apk = providers.gradleProperty("discordApk").orNull
+                ?: throw GradleException("Requires -PdiscordApk=/absolute/path/to/music.apk")
+            val official = providers.gradleProperty("morpheBundle").orNull
+                ?: throw GradleException("Requires -PmorpheBundle=/absolute/path/to/official-patches.mpp (1.47.0+)")
+            setArgs(listOfNotNull(apk, official, providers.gradleProperty("discordOutput").orNull))
+        }
+    }
     register<JavaExec>("generatePatchesList") {
         description = "Build patch with patch list"
 
