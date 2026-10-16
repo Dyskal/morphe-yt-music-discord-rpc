@@ -2,13 +2,14 @@ package me.dyskal.ytmrpc;
 
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -23,6 +24,17 @@ import okhttp3.Response;
 public final class DiscordOAuth {
     public static final String REDIRECT_URI = "ytmdiscord://oauth2/callback";
     public static final String SCOPES = "openid sdk.social_layer_presence";
+    private static final String AUTHORIZE_URL = "https://discord.com/oauth2/authorize";
+    private static final Map<String, DiscordFailure.Kind> ERROR_KINDS = new HashMap<>();
+    static {
+        ERROR_KINDS.put("invalid_grant", DiscordFailure.Kind.AUTHORIZATION);
+        ERROR_KINDS.put("invalid_token", DiscordFailure.Kind.AUTHORIZATION);
+        ERROR_KINDS.put("invalid_client", DiscordFailure.Kind.CONFIGURATION);
+        ERROR_KINDS.put("unauthorized_client", DiscordFailure.Kind.CONFIGURATION);
+        ERROR_KINDS.put("invalid_scope", DiscordFailure.Kind.CONFIGURATION);
+        ERROR_KINDS.put("access_denied", DiscordFailure.Kind.CONFIGURATION);
+        ERROR_KINDS.put("unsupported_grant_type", DiscordFailure.Kind.CONFIGURATION);
+    }
     private static final OkHttpClient HTTP = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS)
             .callTimeout(15, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build();
@@ -58,10 +70,15 @@ public final class DiscordOAuth {
 
     public static String authorizeUrl(String appId, String state, String verifier) throws Exception {
         if (!isValidApplicationId(appId)) throw new DiscordFailure(DiscordFailure.Kind.CONFIGURATION, "Enter a valid 17–20 digit application ID");
-        return "https://discord.com/oauth2/authorize?client_id=" + appId
+        return AUTHORIZE_URL + "?client_id=" + appId
                 + "&response_type=code&redirect_uri=" + encode(REDIRECT_URI)
                 + "&scope=" + encode(SCOPES) + "&state=" + encode(state)
                 + "&code_challenge_method=S256&code_challenge=" + challenge(verifier);
+    }
+
+    static String appAuthorizeUrl(String browserUrl) {
+        if (!browserUrl.startsWith(AUTHORIZE_URL + "?")) throw new IllegalArgumentException("Not a Discord authorization URL");
+        return "discord://action/oauth2/authorize" + browserUrl.substring(AUTHORIZE_URL.length());
     }
 
     public JSONObject exchange(String appId, String code, String verifier) throws Exception {
@@ -84,14 +101,7 @@ public final class DiscordOAuth {
             if (response.body() == null) throw new DiscordFailure(DiscordFailure.Kind.PROTOCOL, "Discord returned an empty OAuth response");
             String body;
             try (var input = response.body().byteStream()) {
-                ByteArrayOutputStream output = new ByteArrayOutputStream();
-                byte[] buffer = new byte[4096];
-                int count;
-                while ((count = input.read(buffer)) != -1) {
-                    if (output.size() + count > 65_536) throw new DiscordFailure(DiscordFailure.Kind.PROTOCOL, "Discord OAuth response is too large");
-                    output.write(buffer, 0, count);
-                }
-                body = output.toString("UTF-8");
+                body = Http.readLimited(input, 65_536);
             }
             if (!response.isSuccessful()) throw httpFailure(response.code(), body, response.header("Retry-After"));
             JSONObject result;
@@ -117,19 +127,13 @@ public final class DiscordOAuth {
         String code = "";
         try {
             String value = new JSONObject(body).optString("error");
-            if (java.util.Arrays.asList("invalid_grant", "invalid_token", "invalid_client", "unauthorized_client",
-                    "invalid_scope", "access_denied", "unsupported_grant_type").contains(value)) code = value;
+            if (ERROR_KINDS.containsKey(value)) code = value;
         } catch (Exception ignored) { }
-        DiscordFailure.Kind kind;
-        if ("invalid_client".equals(code) || "unauthorized_client".equals(code) || "invalid_scope".equals(code)
-                || "access_denied".equals(code) || "unsupported_grant_type".equals(code)) kind = DiscordFailure.Kind.CONFIGURATION;
-        else if ("invalid_grant".equals(code) || "invalid_token".equals(code) || status == 401) kind = DiscordFailure.Kind.AUTHORIZATION;
-        else if (status == 429 || status >= 500) kind = DiscordFailure.Kind.TRANSIENT;
-        else kind = DiscordFailure.Kind.CONFIGURATION;
-        long delay = 0;
-        try { delay = Math.max(0, (long) (Double.parseDouble(retryAfter) * 1000)); }
-        catch (Exception ignored) { }
-        return new DiscordFailure(kind, "Discord OAuth HTTP " + status + (code.isEmpty() ? "" : " (" + code + ")"), status, delay);
+        DiscordFailure.Kind kind = ERROR_KINDS.get(code);
+        if (kind == null) kind = status == 401 ? DiscordFailure.Kind.AUTHORIZATION
+                : status == 429 || status >= 500 ? DiscordFailure.Kind.TRANSIENT : DiscordFailure.Kind.CONFIGURATION;
+        return new DiscordFailure(kind, "Discord OAuth HTTP " + status + (code.isEmpty() ? "" : " (" + code + ")"),
+                status, Http.retryAfterMillis(retryAfter, 0));
     }
 
     private static DiscordFailure cancelledFailure() { return new DiscordFailure(DiscordFailure.Kind.CANCELLED, "Authorization cancelled"); }

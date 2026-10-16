@@ -21,6 +21,13 @@ private val discordResourcesPatch = resourcePatch {
         }
         document(ADD_ON_PREFERENCES).use { addDiscordPreferences(it) }
         document("AndroidManifest.xml").use { manifest ->
+            val queries = manifest.getElementsByTagName("queries").item(0)
+                ?: manifest.createElement("queries").also { manifest.documentElement.appendChild(it) }
+            queries.appendChild(manifest.createElement("intent").apply {
+                appendChild(manifest.createElement("action").apply {
+                    setAttribute("android:name", "android.support.customtabs.action.CustomTabsService")
+                })
+            })
             val application = manifest.getElementsByTagName("application").item(0)
             val activity = manifest.createElement("activity").apply {
                 setAttribute("android:name", "me.dyskal.ytmrpc.DiscordOAuthActivity")

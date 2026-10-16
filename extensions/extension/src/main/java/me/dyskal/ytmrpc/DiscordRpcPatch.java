@@ -1,7 +1,6 @@
 package me.dyskal.ytmrpc;
 
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.ActivityNotFoundException;
 import android.media.MediaMetadata;
@@ -23,7 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
 import java.lang.ref.WeakReference;
-import java.util.LinkedHashMap;
+import java.util.function.Consumer;
 
 /** Application-level initialization covers normal and service-only playback starts. */
 public final class DiscordRpcPatch {
@@ -39,10 +38,9 @@ public final class DiscordRpcPatch {
     private static final Object credentialsLock = new Object();
     private static final Handler main = new Handler(Looper.getMainLooper());
     private static volatile String status = "Not connected";
-    private static volatile MediaMetadata metadata;
-    private static volatile PlaybackState playback;
-    private static volatile String nativeVideoId, metadataVideoId;
-    private static final LinkedHashMap<String, DiscordNativeMetadata> nativeMetadata = new LinkedHashMap<>();
+    private static MediaMetadata metadata;
+    private static PlaybackState playback;
+    private static final DiscordMetadataState trackMetadata = new DiscordMetadataState();
     private static volatile boolean initialized, authorized;
     private static SharedPreferences preferences;
     private static DiscordTokenStore tokenStore;
@@ -114,19 +112,25 @@ public final class DiscordRpcPatch {
     }
 
     public static void onSetMetadata(MediaMetadata value) {
-        metadata = value;
-        metadataVideoId = nativeVideoId;
-        if (initialized && isSharingEnabled()) worker.execute(DiscordRpcPatch::reconcileSafely);
+        worker.execute(() -> {
+            metadata = value;
+            trackMetadata.metadata(value == null ? null : DiscordTrack.from(value));
+            if (initialized && isSharingEnabled()) reconcileSafely();
+        });
     }
     public static void onSetPlaybackState(PlaybackState value) {
-        playback = value;
-        if (initialized && isSharingEnabled()) worker.execute(DiscordRpcPatch::reconcileSafely);
+        worker.execute(() -> {
+            playback = value;
+            if (initialized && isSharingEnabled()) reconcileSafely();
+        });
     }
 
     public static void onNativeVideoId(String videoId) {
-        if (DiscordTrack.videoId(videoId) == null || videoId.equals(nativeVideoId)) return;
-        nativeVideoId = videoId;
-        if (initialized) worker.execute(DiscordRpcPatch::reconcileSafely);
+        if (DiscordTrack.videoId(videoId) == null) return;
+        worker.execute(() -> {
+            if (!trackMetadata.videoId(videoId)) return;
+            if (initialized && isSharingEnabled()) reconcileSafely();
+        });
     }
 
     public static void onNativeQueueMetadata(byte[] renderer) {
@@ -135,12 +139,7 @@ public final class DiscordRpcPatch {
             try {
                 DiscordNativeMetadata data = DiscordNativeMetadata.parse(renderer);
                 if (data == null) return;
-                DiscordNativeMetadata previous = nativeMetadata.put(data.videoId, data);
-                while (nativeMetadata.size() > 4) nativeMetadata.remove(nativeMetadata.keySet().iterator().next());
-                if (nativeVideoId == null) nativeVideoId = data.videoId;
-                if (metadataVideoId == null && data.videoId.equals(nativeVideoId) && metadata != null
-                        && data.title.equals(metadata.getString(MediaMetadata.METADATA_KEY_TITLE))) metadataVideoId = data.videoId;
-                if (previous == null) DiscordDiagnostics.info("Native track metadata: video=true, artist=" + (data.artistId != null)
+                if (trackMetadata.nativeMetadata(data)) DiscordDiagnostics.info("Native track metadata: video=true, artist=" + (data.artistId != null)
                         + ", album=" + (data.albumId != null) + ", cover=" + (data.artworkUrl != null));
                 if (initialized && isSharingEnabled()) reconcileSafely();
             } catch (Exception error) { DiscordDiagnostics.failure("Decode native track metadata", error); }
@@ -201,29 +200,36 @@ public final class DiscordRpcPatch {
                         credentials = next;
                     }
                     preferences.edit().putBoolean("enabled", false).apply();
-                    stopGateway(); stopTicker(); cancelArtwork(); cancel(idleClose); idleClose = null;
+                    stopAll();
                     scheduleAuthorizationTimeout(attempt);
                 }
                 setStatus("Waiting for Discord authorization");
                 main.post(() -> {
                     if (!authorization.isCurrent(attempt)) return;
-                    try { context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+                    try { DiscordAuthLauncher.launch(context, url); }
                     catch (ActivityNotFoundException error) {
                         worker.execute(() -> finishAuthorization(attempt,
-                                new DiscordFailure(DiscordFailure.Kind.CONFIGURATION, "No browser is available for Discord sign-in")));
+                                new DiscordFailure(DiscordFailure.Kind.CONFIGURATION, "No Discord app or browser is available for sign-in")));
                     } catch (Exception error) { worker.execute(() -> finishAuthorization(attempt, error)); }
                 });
             } catch (Exception error) { finishAuthorization(attempt, error); }
         });
     }
 
-    public static void callback(Context context, Uri uri) {
+    public static void callback(Context context, Uri uri, Consumer<Boolean> accepted) {
         initialize(context);
-        if (uri == null || !"ytmdiscord".equals(uri.getScheme()) || !"oauth2".equals(uri.getHost()) || !"/callback".equals(uri.getPath())) return;
+        if (uri == null || !"ytmdiscord".equals(uri.getScheme()) || !"oauth2".equals(uri.getHost()) || !"/callback".equals(uri.getPath())) {
+            main.post(() -> accepted.accept(false)); return;
+        }
         worker.execute(() -> {
             DiscordAuthorization.Attempt attempt;
             try { attempt = authorization.claim(uri.getQueryParameter("state"), System.currentTimeMillis()); }
-            catch (Exception error) { report("OAuth callback", error); return; }
+            catch (Exception error) {
+                DiscordDiagnostics.failure("OAuth callback", error);
+                main.post(() -> accepted.accept(false)); return;
+            }
+            // Runs after initialization restores pending PKCE state, including after process death.
+            main.post(() -> accepted.accept(true));
             String code = uri.getQueryParameter("code"), errorCode = uri.getQueryParameter("error");
             if (errorCode != null || code == null) {
                 finishAuthorization(attempt, new DiscordFailure("invalid_scope".equals(errorCode)
@@ -267,11 +273,9 @@ public final class DiscordRpcPatch {
         preferences.edit().putBoolean("enabled", false).apply();
         synchronized (credentialsLock) { ++credentialsEpoch; }
         worker.execute(() -> {
-            stopGateway(); stopTicker(); cancelArtwork(); cancel(idleClose); idleClose = null; cancel(authorizationTimeout);
+            stopAll(); cancel(authorizationTimeout);
             try {
-                synchronized (credentialsLock) {
-                    tokenStore.clear(); credentials = new JSONObject(); updateAuthorized();
-                }
+                clearCredentials(false);
                 setStatus("Not connected");
             } catch (Exception error) { report("Forget Discord account", error); }
         });
@@ -324,6 +328,14 @@ public final class DiscordRpcPatch {
     }
 
     private static JSONObject copyCredentials() throws Exception { return new JSONObject(credentials.toString()); }
+    private static void clearCredentials(boolean keepPending) throws Exception {
+        synchronized (credentialsLock) {
+            JSONObject next = keepPending ? copyCredentials() : new JSONObject();
+            for (String key : new String[]{"app_id", "access_token", "refresh_token", "expires_at"}) next.remove(key);
+            if (keepPending) tokenStore.write(next); else tokenStore.clear();
+            credentials = next; ++credentialsEpoch; updateAuthorized();
+        }
+    }
     private static void updateAuthorized() {
         authorized = getApplicationId().equals(credentials.optString("app_id")) && !credentials.optString("access_token").isEmpty();
         notifySettings();
@@ -378,11 +390,12 @@ public final class DiscordRpcPatch {
 
     private static void reconcile() throws Exception {
         if (!isSharingEnabled() || !authorized) {
-            stopTicker(); cancelArtwork(); cancel(idleClose); idleClose = null; stopGateway(); return;
+            stopAll(); return;
         }
         MediaMetadata track = metadata;
         PlaybackState state = playback;
-        if (nativeVideoId != null && !nativeVideoId.equals(metadataVideoId)) {
+        if (!trackMetadata.isCurrent()) {
+            stopTicker();
             cancelArtwork();
             if (gateway != null) gateway.update(DiscordPresence.update(null), "clear");
             return;
@@ -409,6 +422,7 @@ public final class DiscordRpcPatch {
             return;
         }
         cancel(idleClose); idleClose = null;
+        // Also rechecks artwork backoff/cache expiry; playback callbacks alone do not retry failed covers.
         if (ticker == null) ticker = worker.scheduleWithFixedDelay(DiscordRpcPatch::reconcileSafely, 1, 1, TimeUnit.SECONDS);
         if (gateway == null) {
             long epoch = ++connectionEpoch;
@@ -430,7 +444,7 @@ public final class DiscordRpcPatch {
             });
             gateway.start();
         }
-        DiscordTrack snapshot = DiscordTrack.from(track).enrich(nativeMetadata.get(nativeVideoId), nativeVideoId);
+        DiscordTrack snapshot = trackMetadata.snapshot();
         ensureArtwork(snapshot);
         long wallNow = System.currentTimeMillis();
         JSONObject activity = DiscordPresence.track(getApplicationId(), snapshot, usesArtistHeadline(), artwork,
@@ -444,6 +458,9 @@ public final class DiscordRpcPatch {
 
     private static void stopGateway() {
         if (gateway != null) { ++connectionEpoch; gateway.close(); gateway = null; }
+    }
+    private static void stopAll() {
+        stopGateway(); stopTicker(); cancelArtwork(); cancel(idleClose); idleClose = null;
     }
     private static void stopTicker() { cancel(ticker); ticker = null; }
     private static void cancel(ScheduledFuture<?> task) { if (task != null) task.cancel(false); }
@@ -461,12 +478,11 @@ public final class DiscordRpcPatch {
         if (active != null) active.close();
         preferences.edit().putBoolean("enabled", false).apply();
         worker.execute(() -> {
-            stopGateway(); stopTicker(); cancelArtwork(); cancel(idleClose); idleClose = null;
+            stopAll();
             try {
                 synchronized (credentialsLock) {
-                    tokenStore.clear(); credentials = new JSONObject(); ++credentialsEpoch;
+                    clearCredentials(false);
                     preferences.edit().putString("application_id", id).putBoolean("enabled", false).apply();
-                    updateAuthorized();
                 }
                 setStatus("Application ID saved; connect to Discord");
             } catch (Exception error) { report("Save application ID", error); }
@@ -542,14 +558,10 @@ public final class DiscordRpcPatch {
 
     private static void connectionFailed(DiscordFailure error) {
         preferences.edit().putBoolean("enabled", false).apply();
-        stopGateway(); stopTicker(); cancelArtwork(); cancel(idleClose); idleClose = null;
+        stopAll();
         if (error.kind == DiscordFailure.Kind.AUTHORIZATION) {
             try {
-                synchronized (credentialsLock) {
-                    JSONObject next = copyCredentials();
-                    for (String key : new String[]{"app_id", "access_token", "refresh_token", "expires_at"}) next.remove(key);
-                    tokenStore.write(next); credentials = next; ++credentialsEpoch; updateAuthorized();
-                }
+                clearCredentials(true);
             } catch (Exception storageError) { report("Clear rejected authorization", storageError); }
         }
         report("Discord connection", error);

@@ -51,4 +51,14 @@ public class DiscordAuthorizationTest {
         assertThrows(DiscordFailure.class, () -> auth.claim(attempt.state, expired));
         assertNull(new DiscordAuthorization().restore(attempt.toJson(), expired));
     }
+
+    @Test public void finishedCallbackCannotClaimOrConsumeANewPendingAttempt() throws Exception {
+        DiscordAuthorization auth = new DiscordAuthorization();
+        DiscordAuthorization.Attempt first = auth.begin(APP, 1000);
+        assertSame(first, auth.claim(first.state, 1001)); assertTrue(auth.finish(first));
+        assertThrows(DiscordFailure.class, () -> auth.claim(first.state, 1002));
+        DiscordAuthorization.Attempt next = auth.begin(APP, 1003);
+        assertThrows(DiscordFailure.class, () -> auth.claim(first.state, 1004));
+        assertTrue(auth.isCurrent(next)); assertSame(next, auth.claim(next.state, 1005));
+    }
 }

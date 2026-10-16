@@ -28,7 +28,7 @@ public final class DiscordGateway implements AutoCloseable {
     }
     private final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor(r -> thread(r, "Discord gateway"));
     private final ExecutorService tokenWorker = Executors.newSingleThreadExecutor(r -> thread(r, "Discord token"));
-    private final OkHttpClient http = new OkHttpClient.Builder()
+    private static final OkHttpClient HTTP = new OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS)
             .followRedirects(false).followSslRedirects(false).build();
     private final TokenProvider tokens;
@@ -69,7 +69,7 @@ public final class DiscordGateway implements AutoCloseable {
         long id = ++generation;
         ready = false; awaitingAck = false; sequence = JSONObject.NULL; sentKey = null;
         status.changed("Connecting to Discord");
-        socket = http.newWebSocket(new Request.Builder().url(url).build(), new WebSocketListener() {
+        socket = HTTP.newWebSocket(new Request.Builder().url(url).build(), new WebSocketListener() {
             @Override public void onMessage(WebSocket ws, String text) {
                 dispatch(() -> {
                     if (id != generation || !enabled || closed.get()) return;
@@ -92,9 +92,7 @@ public final class DiscordGateway implements AutoCloseable {
                         ? DiscordFailure.Kind.CONFIGURATION : DiscordFailure.Kind.TRANSIENT, "Discord gateway HTTP " + code, code, 0);
                 else failure = DiscordFailure.network(error);
                 if (code == 429) {
-                    long delay = 60_000;
-                    try { delay = Math.max(delay, (long) (Double.parseDouble(response.header("Retry-After")) * 1000)); }
-                    catch (Exception ignored) { }
+                    long delay = Http.retryAfterMillis(response.header("Retry-After"), 60_000);
                     failure = new DiscordFailure(DiscordFailure.Kind.TRANSIENT, "Discord gateway rate limited (HTTP 429)", code, delay);
                 }
                 DiscordFailure result = failure;
@@ -246,7 +244,7 @@ public final class DiscordGateway implements AutoCloseable {
             tokens.cancel();
             status.changed("Disconnected");
             tokenWorker.shutdownNow();
-            http.connectionPool().evictAll(); http.dispatcher().executorService().shutdown(); worker.shutdown();
+            worker.shutdown();
         });
     }
 }

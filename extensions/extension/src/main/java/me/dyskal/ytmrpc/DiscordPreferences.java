@@ -15,8 +15,6 @@ import android.util.Pair;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import java.io.ByteArrayOutputStream;
-
 /** Binds Morphe's themed preference rows to this add-on's private runtime settings. */
 @SuppressWarnings({"deprecation", "unused"})
 public final class DiscordPreferences extends Preference {
@@ -72,7 +70,7 @@ public final class DiscordPreferences extends Preference {
             DiscordRpcPatch.setSharingEnabled(Boolean.TRUE.equals(value)); return false;
         });
         connect.setOnPreferenceClickListener(preference -> {
-            DiscordRpcPatch.authorize(getContext().getApplicationContext(), DiscordRpcPatch.getApplicationId()); render(); return true;
+            DiscordRpcPatch.authorize(getContext(), DiscordRpcPatch.getApplicationId()); render(); return true;
         });
         cancel.setOnPreferenceClickListener(preference -> { DiscordRpcPatch.cancelAuthorization(); render(); return true; });
         disconnect.setOnPreferenceClickListener(preference -> { DiscordRpcPatch.disconnect(getContext().getApplicationContext()); render(); return true; });
@@ -102,10 +100,7 @@ public final class DiscordPreferences extends Preference {
     private void showAbout() {
         String text;
         try (var input = getContext().getAssets().open("dyskal_discord_notices.txt")) {
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            byte[] buffer = new byte[4096]; int count;
-            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
-            text = output.toString("UTF-8");
+            text = Http.readLimited(input, 262_144);
         } catch (Exception error) {
             DiscordDiagnostics.failure("Read notices", error);
             text = "Notices unavailable. Source: https://github.com/Dyskal/morphe-yt-music-discord-rpc";

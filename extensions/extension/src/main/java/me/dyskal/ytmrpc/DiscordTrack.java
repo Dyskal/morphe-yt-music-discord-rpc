@@ -23,20 +23,23 @@ public final class DiscordTrack {
         albumUrl = albumId != null && albumId.matches("MPRE[A-Za-z0-9_-]{4,100}")
                 ? "https://music.youtube.com/browse/" + albumId : null;
         artworkUrl = publicUrl(imageUrl) != null ? imageUrl
-                : videoId == null ? null : "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg";
+                : fallbackArtwork(videoId);
     }
 
     public DiscordTrack enrich(DiscordNativeMetadata nativeData, String currentVideoId) {
         String id = videoId(currentVideoId) != null ? currentVideoId : videoId;
+        String image = videoId != null && !videoId.equals(id) && artworkUrl.equals(fallbackArtwork(videoId)) ? null : artworkUrl;
         if (nativeData == null || (id != null && !id.equals(nativeData.videoId))) {
-            return new DiscordTrack(title, artist, album, id, artworkUrl);
+            return new DiscordTrack(title, artist, album, id, image);
         }
         return new DiscordTrack(nativeData.title.isEmpty() ? title : nativeData.title,
                 nativeData.artist.isEmpty() ? artist : nativeData.artist,
                 nativeData.album.isEmpty() ? album : nativeData.album, nativeData.videoId,
-                nativeData.artworkUrl == null ? artworkUrl : nativeData.artworkUrl,
+                nativeData.artworkUrl == null ? image : nativeData.artworkUrl,
                 nativeData.artistId, nativeData.albumId);
     }
+
+    private static String fallbackArtwork(String id) { return id == null ? null : "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg"; }
 
     public static DiscordTrack from(MediaMetadata metadata) {
         String id = metadata.getString(MediaMetadata.METADATA_KEY_MEDIA_ID);

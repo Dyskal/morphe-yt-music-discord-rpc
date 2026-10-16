@@ -1,10 +1,11 @@
 Dyskal YouTube Music Discord RPC
 
-Experimental personal patch by Dyskal. Live Discord compatibility remains unverified.
+YouTube Music Discord rich presence add-on by Dyskal.
 Source: https://github.com/Dyskal/morphe-yt-music-discord-rpc
 Project license: GPLv3 with the additional terms in NOTICE and UPSTREAM-NOTICE.
 
 Runtime dependencies:
+AndroidX Browser and dependencies — The Android Open Source Project — https://android.googlesource.com/platform/frameworks/support
 OkHttp — Square, Inc. — https://github.com/square/okhttp
 Okio — Square, Inc. — https://github.com/square/okio
 Kotlin standard library — JetBrains s.r.o. and contributors — https://github.com/JetBrains/kotlin

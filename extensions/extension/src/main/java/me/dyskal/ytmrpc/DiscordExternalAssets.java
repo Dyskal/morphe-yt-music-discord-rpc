@@ -3,7 +3,6 @@ package me.dyskal.ytmrpc;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.concurrent.TimeUnit;
@@ -66,9 +65,7 @@ public final class DiscordExternalAssets {
         if (Thread.currentThread().isInterrupted()) call.cancel();
         try (Response response = call.execute()) {
             if (!response.isSuccessful()) {
-                long delay = 60_000;
-                try { delay = Math.max(delay, (long) (Double.parseDouble(response.header("Retry-After")) * 1000)); }
-                catch (Exception ignored) { }
+                long delay = Http.retryAfterMillis(response.header("Retry-After"), 60_000);
                 // An artwork-route rejection must not discard a working music presence/login.
                 throw new DiscordFailure(response.code() == 429 || response.code() >= 500
                         ? DiscordFailure.Kind.TRANSIENT : DiscordFailure.Kind.CONFIGURATION,
@@ -77,13 +74,7 @@ public final class DiscordExternalAssets {
             if (response.body() == null) throw new DiscordFailure(DiscordFailure.Kind.PROTOCOL, "Discord artwork response was empty");
             String result;
             try (var input = response.body().byteStream()) {
-                ByteArrayOutputStream output = new ByteArrayOutputStream();
-                byte[] buffer = new byte[4096]; int count;
-                while ((count = input.read(buffer)) != -1) {
-                    if (output.size() + count > 65_536) throw new DiscordFailure(DiscordFailure.Kind.PROTOCOL, "Discord artwork response is too large");
-                    output.write(buffer, 0, count);
-                }
-                result = output.toString("UTF-8");
+                result = Http.readLimited(input, 65_536);
             }
             String path;
             try { path = new JSONArray(result).getJSONObject(0).getString("external_asset_path"); }

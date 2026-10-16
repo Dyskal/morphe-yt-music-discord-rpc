@@ -50,6 +50,27 @@ public class DiscordGatewayTest {
         }
     }
 
+    @Test public void closingOneGatewayDoesNotStopAnotherOrPreventRecreation() throws Exception {
+        BlockingQueue<JSONObject> firstFrames = new LinkedBlockingQueue<>(), secondFrames = new LinkedBlockingQueue<>(), nextFrames = new LinkedBlockingQueue<>();
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(upgrade(firstFrames, true, 60_000)); server.enqueue(upgrade(secondFrames, true, 60_000));
+            server.enqueue(upgrade(nextFrames, true, 60_000));
+            try (DiscordGateway first = gateway(server, force -> "first", status -> { });
+                 DiscordGateway second = gateway(server, force -> "second", status -> { })) {
+                first.start(); awaitOp(firstFrames, 2, 5);
+                first.update(DiscordPresence.update(new JSONObject().put("name", "first")), "first");
+                awaitOp(firstFrames, 3, 5);
+                second.start(); awaitOp(secondFrames, 2, 5);
+                first.close(); awaitOp(firstFrames, 3, 5);
+                try (DiscordGateway next = gateway(server, force -> "next", status -> { })) {
+                    next.start(); assertEquals("Bearer next", awaitOp(nextFrames, 2, 5).getJSONObject("d").getString("token"));
+                    second.update(DiscordPresence.update(new JSONObject().put("name", "still playing")), "second");
+                    assertEquals("still playing", awaitOp(secondFrames, 3, 5).getJSONObject("d").getJSONArray("activities").getJSONObject(0).getString("name"));
+                }
+            }
+        }
+    }
+
     @Test public void rejectedRefreshGrantStopsInsteadOfRetryingForever() throws Exception {
         BlockingQueue<String> statuses = new LinkedBlockingQueue<>();
         AtomicInteger tokens = new AtomicInteger();

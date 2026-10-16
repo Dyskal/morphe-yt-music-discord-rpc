@@ -21,7 +21,7 @@ To receive development builds, enable prereleases in the patch-source settings.
 ## Connect to Discord
 
 1. Open YouTube Music → **Settings → Morphe → Misc → Discord rich presence**.
-2. Tap **Connect with Discord** and authorize in your browser.
+2. Tap **Connect with Discord** and authorize in the Discord app, or in a browser tab if Discord isn't available.
 3. Enable activity sharing in Discord and play some music.
 
 The default Discord application is ready to use; no application ID or developer account is required.

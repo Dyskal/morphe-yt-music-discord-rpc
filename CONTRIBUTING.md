@@ -44,6 +44,8 @@ The default application (`1559278040175878146`) needs no user setup. To use your
 
 Authentication uses OAuth2 with PKCE. Pending sign-ins are persisted for process-death recovery. Preserve the refresh lock and epoch/revision guards when changing asynchronous code.
 
+Authorization first uses Discord's Android route (`discord://action/oauth2/authorize`), preserving the same query and registered redirect. It falls back to a browser Custom Tab, then a regular browser. No native Social SDK is bundled.
+
 ## Releases
 
 Develop on `dev` using semantic commits (`feat:`, `fix:`, `chore:`). Merge `dev` into `main` for a stable release.

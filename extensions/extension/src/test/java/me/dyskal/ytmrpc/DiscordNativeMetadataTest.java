@@ -24,6 +24,9 @@ public class DiscordNativeMetadataTest {
         byte[] endpoint = browseId == null ? new byte[0] : field(5, field(48687626, text(2, browseId)));
         return field(1, message(text(1, text), endpoint));
     }
+    static DiscordNativeMetadata nativeTrack(String videoId, String title) throws Exception {
+        return DiscordNativeMetadata.parse(message(text(10, videoId), field(1, run(title, null))));
+    }
     private static byte[] menuNavigation(String browseId) throws Exception {
         return field(1, field(66441108, message(field(1, run("Go to album", null)),
                 field(3, field(48687626, text(2, browseId))))));

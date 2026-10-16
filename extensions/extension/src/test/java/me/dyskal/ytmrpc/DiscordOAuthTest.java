@@ -28,6 +28,19 @@ public class DiscordOAuthTest {
         assertThrows(DiscordFailure.class, () -> DiscordOAuth.authorizeUrl("bad", "state", "verifier"));
     }
 
+    @Test public void nativeHandoffPreservesPkceStateScopesAndRegisteredRedirectExactly() throws Exception {
+        String web = DiscordOAuth.authorizeUrl(APP, "state+with&symbols", "verifier");
+        java.net.URI browser = new java.net.URI(web), nativeApp = new java.net.URI(DiscordOAuth.appAuthorizeUrl(web));
+        assertEquals("discord", nativeApp.getScheme()); assertEquals("action", nativeApp.getHost());
+        assertEquals("/oauth2/authorize", nativeApp.getPath());
+        assertEquals(browser.getRawQuery(), nativeApp.getRawQuery());
+        assertTrue(nativeApp.getRawQuery().contains("redirect_uri=ytmdiscord%3A%2F%2Foauth2%2Fcallback"));
+        assertTrue(nativeApp.getRawQuery().contains("scope=openid+sdk.social_layer_presence"));
+        assertTrue(nativeApp.getRawQuery().contains("state=state%2Bwith%26symbols"));
+        assertFalse(nativeApp.toString().contains("code_verifier="));
+        assertThrows(IllegalArgumentException.class, () -> DiscordOAuth.appAuthorizeUrl("https://discord.com.evil.example/oauth2/authorize?state=x"));
+    }
+
     @Test public void exchangeAndRefreshUsePublicClientForms() throws Exception {
         try (MockWebServer server = new MockWebServer()) {
             server.enqueue(token("access-one")); server.enqueue(token("access-two"));
@@ -75,6 +88,17 @@ public class DiscordOAuthTest {
             DiscordFailure error = assertThrows(DiscordFailure.class, () -> oauth.exchange(APP, "code", "verifier"));
             assertEquals(DiscordFailure.Kind.CONFIGURATION, error.kind); assertFalse(error.isRetryable());
             assertFalse(error.getMessage().contains("secret"));
+        }
+    }
+
+    @Test public void knownConfigurationErrorsOverrideStatusAndUnknownCodesStayPrivate() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse().setResponseCode(401).setBody("{\"error\":\"invalid_scope\"}"));
+            server.enqueue(new MockResponse().setResponseCode(429).setBody("{\"error\":\"PRIVATE DATA\"}"));
+            DiscordOAuth oauth = new DiscordOAuth(server.url("/token").toString());
+            assertEquals(DiscordFailure.Kind.CONFIGURATION, assertThrows(DiscordFailure.class, () -> oauth.refresh(APP, "token")).kind);
+            DiscordFailure unknown = assertThrows(DiscordFailure.class, () -> oauth.refresh(APP, "token"));
+            assertTrue(unknown.isRetryable()); assertFalse(unknown.getMessage().contains("PRIVATE"));
         }
     }
 

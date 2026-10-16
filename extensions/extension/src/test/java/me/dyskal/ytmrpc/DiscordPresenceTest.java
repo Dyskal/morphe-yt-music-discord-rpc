@@ -67,4 +67,15 @@ public class DiscordPresenceTest {
         String title = activity.getString("details"); assertEquals(128, title.codePointCount(0, title.length()));
         assertEquals(0, new JSONObject(DiscordPresence.update(null)).getJSONObject("d").getJSONArray("activities").length());
     }
+
+    @Test public void enrichmentReplacesOnlyStaleDerivedCovers() throws Exception {
+        DiscordTrack old = new DiscordTrack("Song", "Artist", "Album", "dQw4w9WgXcQ", null);
+        String next = "9itENA7hVe0", expected = "https://i.ytimg.com/vi/" + next + "/hqdefault.jpg";
+        assertEquals(expected, old.enrich(null, next).artworkUrl);
+        assertEquals(expected, old.enrich(DiscordNativeMetadataTest.nativeTrack("dQw4w9WgXcQ", "Song"), next).artworkUrl);
+        assertEquals(expected, old.enrich(DiscordNativeMetadataTest.nativeTrack(next, "Song"), next).artworkUrl);
+        DiscordTrack publicCover = new DiscordTrack("Song", "Artist", "Album", "dQw4w9WgXcQ", "https://lh3.googleusercontent.com/album");
+        assertEquals(publicCover.artworkUrl, publicCover.enrich(null, next).artworkUrl);
+        assertEquals(old.artworkUrl, old.enrich(null, old.videoId).artworkUrl);
+    }
 }
