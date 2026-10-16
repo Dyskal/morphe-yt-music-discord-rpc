@@ -1,49 +1,46 @@
 # Dyskal YouTube Music Discord RPC
 
-YouTube Music add-on patch, **compatible with Morphe**, based on the [official patches template](https://github.com/MorpheApp/morphe-patches-template). This is Dyskal's project, not an official Morphe release.
+A [Morphe](https://morphe.software) add-on that shares what you're listening to on YouTube Music as your Discord activity.
 
-Implements the OAuth2 + PKCE approach suggested in [Morphe issue #810](https://github.com/MorpheApp/morphe-patches/issues/810). Like current Metrolist, it authenticates with the Social SDK presence scope over the Discord Gateway. It does not embed the native Social SDK or request an account token.
+## Features
 
-**The core OAuth/presence flow was confirmed by the author on YouTube Music 9.20.53 with Morphe Patches 1.47.0. Native metadata hooks now apply and pass SDK DEX/hierarchy validation on the unpatched 9.20.53 APK. The richer cover/ID data and explicit browser return still need verification in an updated device build.**
+- Song title, artist, album name, and cover art.
+- Click the title to open the song, the artist to open their page, or the cover to open the album.
+- Playback progress at normal speed.
+- Choose the artist or **YouTube Music** as your profile headline.
+- Clears your activity when playback pauses or stops, and reconnects automatically when you listen again.
 
 ## Install
 
-[Add this patch source to Morphe](https://morphe.software/add-source?github=Dyskal/morphe-yt-music-discord-rpc).
+1. [Add this patch source to Morphe](https://morphe.software/add-source?github=Dyskal/morphe-yt-music-discord-rpc).
+2. Apply it alongside **official Morphe Patches 1.47.0 or later**, including the **Settings** patch.
+3. Select **Discord rich presence**, patch a supported YouTube Music APK, and install it.
 
-Development releases are published from `dev`; enable prereleases in your patch-source settings. Apply this add-on **together with the official Morphe Patches bundle, version 1.47.0 or later, including its Settings patch**. Select **Discord rich presence** when patching a supported YouTube Music APK. The in-app application ID defaults to Dyskal's application, `1559278040175878146`; no manual ID entry is needed. The official bundle provides the settings framework, GmsCore, ad removal, and background playback.
+To receive development builds, enable prereleases in the patch-source settings.
 
-## Streamlined setup
+## Connect to Discord
 
-1. **Patch and install:** select **Discord rich presence** in Manager.
-2. **Connect once:** open YouTube Music → **Settings → Morphe → Misc → Discord rich presence → Connect with Discord**. Authorize in the browser; the callback brings Morphe settings back to the foreground and enables sharing after successful exchange.
-3. **Listen:** enable activity visibility in Discord and play music. Later playback automatically reconnects using the saved credentials.
+1. Open YouTube Music → **Settings → Morphe → Misc → Discord rich presence**.
+2. Tap **Connect with Discord** and authorize in your browser.
+3. Enable activity sharing in Discord and play some music.
 
-If you already have a saved login for the selected application, **Connect** reconnects without opening the browser. New sign-ins ignore duplicate taps, time out after two minutes, and can be stopped with **Cancel sign-in**. Cancelled or failed sign-ins retain your previous credentials; sharing stays off until you enable it or reconnect.
+The default Discord application is ready to use; no application ID or developer account is required.
 
-### One-time setup for the application owner
+### Settings
 
-In the Discord Developer Portal, application `1559278040175878146` must have Social SDK/public-client OAuth enabled, access to `sdk.social_layer_presence`, and exactly `ytmdiscord://oauth2/callback` registered as an OAuth2 redirect URI. Users of the default application do not need to create their own Discord application.
+- **Share currently playing music:** turn sharing on or off without signing out.
+- **Profile headline:** show the artist name or **YouTube Music**.
+- **Reconnect:** reconnect using your saved sign-in.
+- **Disconnect and forget account:** sign out and remove saved credentials.
+- **Discord application ID:** optionally use your own application; see [custom application setup](CONTRIBUTING.md#custom-discord-application).
 
-To use another application, configure it the same way and edit **Discord application ID** in the Discord preference screen. Saving a different ID disconnects the current login; tap **Connect with Discord** to authorize the new application.
+Changes take effect without repatching. Sign-in credentials are encrypted on your device.
 
-Morphe's add-on preference API inserts a nested screen into **Misc**. The application-ID input and headline selector use Morphe's own `ResettableEditTextPreference` and `CustomDialogListPreference`, matching SponsorBlock's rounded, themed dialogs. About/licenses uses Morphe's `CustomDialog` too. The rows are self-managed and stored in this add-on's private preferences, outside Morphe's settings import/export.
+## Troubleshooting
 
-Only one installed copy should handle the callback scheme. Credentials and pending PKCE state are encrypted using Android Keystore AES-GCM. Disabling sharing retains login; **Disconnect and forget account** deletes credentials.
+Check **Connection status** on the Discord settings page if sharing or artwork stops working. Confirm Discord's activity sharing is enabled, then try **Reconnect**. If asked to sign in again, disconnect and reconnect your account.
 
-No repatching is needed to change the application ID or appearance. Same-application reconnects reuse saved credentials; new credentials are committed only after successful OAuth.
-
-## Behavior
-
-- Song title, artist, album label, listening activity, progress at 1× playback speed, and direct song/artist/album links. The title opens the current song; the cover opens its album. Discord exposes no independent URL for the album label (`assets.large_text`); it remains plain text. The add-on captures Music's current native queue renderer and player video ID, rather than relying exclusively on MediaSession metadata (9.20.53 omits IDs and artwork URI there).
-- Queue byline navigation endpoints supply real artist channel IDs and album browse IDs. When Android omits the album byline endpoint, the current renderer's own album-navigation menu item supplies it. Title links use the current player video ID. Missing IDs omit a hyperlink instead of substituting a name search. Upcoming tracks, menu service actions, and conflicting album destinations are not used to guess an artist or album.
-- The native renderer supplies the largest public cover URL. MediaSession image URIs and a YouTube-thumbnail fallback remain secondary sources. Discord's external-assets API resolves URLs into `mp:external` references. A bounded per-application cache avoids repeated lookups; pause, skip, logout, and account changes cancel stale work. Artwork errors leave text presence working and are shown in the connection summary.
-- **Profile headline** defaults to **Artist**, replacing “YouTube Music” under your Discord name. Select **YouTube Music** to use the application name. Missing artist metadata falls back to the application name.
-- Clears on pause, buffering, stop, or track end. Rate-limited changes may take roughly five seconds.
-- Delay-based heartbeats, transient reconnects, latest-track replay, and token refresh on subsequent identification. Reconnects use backoff and stop after seven unsuccessful attempts; rate limits respect `Retry-After`.
-- A gateway authentication rejection triggers one forced token refresh. Revoked/invalid refresh grants stop reconnecting and ask you to sign in again; configuration failures show a separate error.
-- Disconnects after one minute without active playback.
-- Application-level initialization supports service-only playback starts. One-second progress polling runs only while sharing is enabled and playback is active; disabled/paused playback does not keep an idle poller running.
-- Long notices are available under **About and licenses**, rather than filling the connection screen.
+Activity changes can take a few seconds to appear, and link behavior can vary between Discord clients.
 
 ## 🩹 Patches list
 
@@ -55,7 +52,7 @@ No repatching is needed to change the application ID or appearance. Same-applica
 
 **🎯 Supported versions:**
 
-| 🧪&nbsp;9.40.51 | 🧪&nbsp;9.39.52 | 🧪&nbsp;9.38.51 | 🧪&nbsp;9.20.53 | 🧪&nbsp;9.15.51 |
+| 9.40.51 | 9.39.52 | 9.38.51 | 9.20.53 | 9.15.51 |
 | :---: | :---: | :---: | :---: | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
@@ -66,39 +63,10 @@ No repatching is needed to change the application ID or appearance. Same-applica
 
 <!-- PATCHES_END -->
 
-## Build and verify
+## Development
 
-Requirements: JDK 21, Android SDK platform/build tools 36, and GitHub Packages credentials with `read:packages`. Set `GITHUB_ACTOR`/`GITHUB_TOKEN`, or `gpr.user`/`gpr.key` in your user Gradle properties. Do not commit credentials.
-
-CI uses the workflow's built-in `GITHUB_TOKEN` to download published dependencies from GitHub Packages, following the official template.
-
-```powershell
-.\gradlew.bat :patches:buildAndroid :patches:test
-```
-
-The bundle is `patches/build/libs/patches-*.mpp`. `:patches:test` also runs the extension's normal Android-module JVM tests (`:extensions:extension:testDebugUnitTest`). Tests cover OAuth, cancellation, refresh, heartbeats, reconnects, presence coalescing, artwork/cache isolation, native renderer decoding, direct hyperlinks, and headline selection. Bundle/settings tests check R8 retention and the Morphe add-on declaration. Real-APK validation checks the generated native projections and cross-DEX class hierarchy. These checks do not substitute for Android Keystore, preference rendering, or Discord clients' cover/hyperlink rendering tests.
-
-Optional real-APK validation and unsigned output:
-
-SDK DEX/hierarchy checks do not run ART's full register-type verifier. A regression test checks the generated queue helper's instance receiver register; an updated-device launch remains required.
-
-```powershell
-.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PmorpheBundle=C:\path\official-patches.mpp"
-.\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PmorpheBundle=C:\path\official-patches.mpp" "-PdiscordOutput=C:\existing-folder\music-discord-unsigned.apk"
-```
-
-Device checks for this update: rounded application-ID/headline/About dialogs, cover clicks opening the album, direct title/artist URLs, OAuth's foreground return, and rapid track skips. `Native track metadata: video=..., artist=..., album=..., cover=...` logs presence of fields without dumping renderer data. If cover lookup starts but fails, **Connection status** reports its Discord artwork HTTP error separately. Discord clients can differ in hyperlink rendering.
-
-Diagnostics use controlled error categories, HTTP/gateway status codes, and exception type names. Tokens, authorization codes, raw server bodies, and gateway frames are not logged:
-
-```text
-adb logcat -s DyskalDiscordRPC AndroidRuntime
-```
-
-## Development and releases
-
-Use `dev` for development and semantic commits (`feat:`, `fix:`, `chore:`). The template's existing `release.yml` and `.releaserc` generate releases, metadata, and changelogs. Merge `dev` into `main` when ready for a stable release; do not manually edit release-generated files.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions, diagnostics, and the release workflow.
 
 ## License and attribution
 
-[GPLv3](LICENSE), with the additional terms in [NOTICE](NOTICE). Upstream MediaSession fingerprints retain their original copyright and [notice](UPSTREAM-NOTICE). Runtime dependencies and source references are documented in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+[GPLv3](LICENSE), with the additional terms in [NOTICE](NOTICE). Based on the [official Morphe patches template](https://github.com/MorpheApp/morphe-patches-template). Upstream fingerprints retain their [copyright and notice](UPSTREAM-NOTICE). Dependencies and source references are documented in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

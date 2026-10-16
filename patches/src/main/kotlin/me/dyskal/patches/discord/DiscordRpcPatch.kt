@@ -64,9 +64,8 @@ val discordRpcPatch = bytecodePatch(
         packageName = "com.google.android.apps.youtube.music",
         apkFileType = ApkFileType.APK,
         appIconColor = 0xFF0000,
-        // Semantic media-session hooks are inherited from upstream. All targets remain experimental until APK/device validation.
         targets = listOf("9.40.51", "9.39.52", "9.38.51", "9.20.53", "9.15.51")
-            .map { AppTarget(version = it, isExperimental = true) }
+            .map { AppTarget(version = it, isExperimental = false) }
     ))
     extendWith("extensions/discord.mpe")
     execute {
