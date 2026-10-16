@@ -1,3 +1,9 @@
+## [1.0.0-dev.7](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.6...v1.0.0-dev.7) (2026-10-16)
+
+### ✨ New Features
+
+* authorize through Discord app with browser fallback ([8632da1](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/8632da1cac6615c48dc4585df201c9433f0dbfa7))
+
 ## [1.0.0-dev.6](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.5...v1.0.0-dev.6) (2026-10-14)
 
 ### 🐛 Bug Fixes

@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-14T22:58:13",
-  "description": "## [1.0.0-dev.6](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.5...v1.0.0-dev.6) (2026-10-14)\n\n### 🐛 Bug Fixes\n\n* resolve album links from current track navigation menu ([d9a68a3](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/d9a68a3012916debd52dc03ca1508b0a009c1aaf))",
-  "download_url": "https://github.com/Dyskal/morphe-yt-music-discord-rpc/releases/download/v1.0.0-dev.6/patches-1.0.0-dev.6.mpp",
+  "created_at": "2026-10-16T13:59:28",
+  "description": "## [1.0.0-dev.7](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.6...v1.0.0-dev.7) (2026-10-16)\n\n### ✨ New Features\n\n* authorize through Discord app with browser fallback ([8632da1](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/8632da1cac6615c48dc4585df201c9433f0dbfa7))",
+  "download_url": "https://github.com/Dyskal/morphe-yt-music-discord-rpc/releases/download/v1.0.0-dev.7/patches-1.0.0-dev.7.mpp",
   "signature_download_url": "",
-  "version": "1.0.0-dev.6"
+  "version": "1.0.0-dev.7"
 }
