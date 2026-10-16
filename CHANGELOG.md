@@ -1,3 +1,9 @@
+## [1.0.0-dev.8](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.7...v1.0.0-dev.8) (2026-10-16)
+
+### 🐛 Bug Fixes
+
+* return to original YouTube Music task after authorization ([50f0b3e](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/50f0b3e29ccfe17ffb43cc5a76ad820b4f98f430))
+
 ## [1.0.0-dev.7](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.6...v1.0.0-dev.7) (2026-10-16)
 
 ### ✨ New Features
