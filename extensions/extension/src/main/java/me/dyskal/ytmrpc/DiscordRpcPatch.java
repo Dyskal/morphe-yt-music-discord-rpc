@@ -167,7 +167,7 @@ public final class DiscordRpcPatch {
         if (!DiscordOAuth.isValidApplicationId(appId)) {
             report("Connect", new DiscordFailure(DiscordFailure.Kind.CONFIGURATION, "Enter a valid 17–20 digit application ID")); return;
         }
-        DiscordAuthorization.Attempt attempt = authorization.begin(appId, System.currentTimeMillis());
+        DiscordAuthorization.Attempt attempt = authorization.begin(appId, System.currentTimeMillis(), DiscordAuthLauncher.taskId(context));
         if (attempt == null) return;
         notifySettings();
         worker.execute(() -> {
@@ -216,20 +216,20 @@ public final class DiscordRpcPatch {
         });
     }
 
-    public static void callback(Context context, Uri uri, Consumer<Boolean> accepted) {
+    public static void callback(Context context, Uri uri, Consumer<DiscordAuthorization.Attempt> accepted) {
         initialize(context);
         if (uri == null || !"ytmdiscord".equals(uri.getScheme()) || !"oauth2".equals(uri.getHost()) || !"/callback".equals(uri.getPath())) {
-            main.post(() -> accepted.accept(false)); return;
+            main.post(() -> accepted.accept(null)); return;
         }
         worker.execute(() -> {
             DiscordAuthorization.Attempt attempt;
             try { attempt = authorization.claim(uri.getQueryParameter("state"), System.currentTimeMillis()); }
             catch (Exception error) {
                 DiscordDiagnostics.failure("OAuth callback", error);
-                main.post(() -> accepted.accept(false)); return;
+                main.post(() -> accepted.accept(null)); return;
             }
             // Runs after initialization restores pending PKCE state, including after process death.
-            main.post(() -> accepted.accept(true));
+            main.post(() -> accepted.accept(attempt));
             String code = uri.getQueryParameter("code"), errorCode = uri.getQueryParameter("error");
             if (errorCode != null || code == null) {
                 finishAuthorization(attempt, new DiscordFailure("invalid_scope".equals(errorCode)

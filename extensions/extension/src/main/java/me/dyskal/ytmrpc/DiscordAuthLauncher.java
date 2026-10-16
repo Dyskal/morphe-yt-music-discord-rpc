@@ -14,12 +14,23 @@ import androidx.browser.customtabs.CustomTabsIntent;
 final class DiscordAuthLauncher {
     private DiscordAuthLauncher() { }
 
-    static void launch(Context context, String browserUrl) {
+    private static Activity activity(Context context) {
         while (!(context instanceof Activity) && context instanceof ContextWrapper) {
             Context base = ((ContextWrapper) context).getBaseContext();
             if (base == context) break;
             context = base;
         }
+        return context instanceof Activity ? (Activity) context : null;
+    }
+
+    static int taskId(Context context) {
+        Activity activity = activity(context);
+        return activity == null ? -1 : activity.getTaskId();
+    }
+
+    static void launch(Context context, String browserUrl) {
+        Activity activity = activity(context);
+        if (activity != null) context = activity;
         int flags = context instanceof Activity ? 0 : Intent.FLAG_ACTIVITY_NEW_TASK;
         try {
             context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(DiscordOAuth.appAuthorizeUrl(browserUrl)))

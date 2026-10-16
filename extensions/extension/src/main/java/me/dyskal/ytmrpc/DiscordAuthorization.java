@@ -11,20 +11,23 @@ public final class DiscordAuthorization {
     public static final class Attempt {
         public final String appId, state, verifier;
         public final long startedAt;
+        public final int returnTaskId;
         private boolean claimed;
-        private Attempt(String appId, String state, String verifier, long startedAt) {
+        private Attempt(String appId, String state, String verifier, long startedAt, int returnTaskId) {
             this.appId = appId; this.state = state; this.verifier = verifier; this.startedAt = startedAt;
+            this.returnTaskId = returnTaskId;
         }
         public JSONObject toJson() throws Exception {
-            return new JSONObject().put("app_id", appId).put("state", state).put("verifier", verifier).put("started_at", startedAt);
+            return new JSONObject().put("app_id", appId).put("state", state).put("verifier", verifier)
+                    .put("started_at", startedAt).put("return_task_id", returnTaskId);
         }
     }
     private Attempt current;
 
-    public synchronized Attempt begin(String appId, long now) {
+    public synchronized Attempt begin(String appId, long now, int returnTaskId) {
         if (current != null) return null;
         if (!DiscordOAuth.isValidApplicationId(appId)) throw new IllegalArgumentException("Invalid application ID");
-        current = new Attempt(appId, DiscordOAuth.randomSecret(), DiscordOAuth.randomSecret(), now);
+        current = new Attempt(appId, DiscordOAuth.randomSecret(), DiscordOAuth.randomSecret(), now, returnTaskId);
         return current;
     }
 
@@ -35,7 +38,7 @@ public final class DiscordAuthorization {
         String appId = saved.getString("app_id");
         String state = saved.getString("state"), verifier = saved.getString("verifier");
         if (!DiscordOAuth.isValidApplicationId(appId) || state.isEmpty() || verifier.isEmpty()) return null;
-        current = new Attempt(appId, state, verifier, startedAt);
+        current = new Attempt(appId, state, verifier, startedAt, saved.optInt("return_task_id", -1));
         return current;
     }
 
