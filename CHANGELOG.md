@@ -1,3 +1,9 @@
+## [1.0.0-dev.9](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.8...v1.0.0-dev.9) (2026-10-31)
+
+### ✨ New Features
+
+* migrate to Morphe Patches 2.0 and align Music targets ([416f638](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/416f638af82ab5ebdca39be82dc3942f45a4bb7c))
+
 ## [1.0.0-dev.8](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0-dev.7...v1.0.0-dev.8) (2026-10-16)
 
 ### 🐛 Bug Fixes
