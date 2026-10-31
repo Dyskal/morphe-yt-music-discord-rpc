@@ -11,7 +11,7 @@ internal fun discordNoticesText(): String = requireNotNull(
     ResourceAnchor.javaClass.getResourceAsStream("/discord/notices.txt")
 ) { "Missing bundled Discord notices" }.bufferedReader(Charsets.UTF_8).use { it.readText() }
 
-/** Reuse Morphe's themed components through the official 1.47+ add-on merge. */
+/** Reuse Morphe's themed components through the official add-on merge. */
 internal fun addDiscordPreferences(document: Document) {
     val root = document.documentElement
     require(root.tagName == "morphe-add-on-preferences") { "Unexpected Morphe add-on declaration root" }

@@ -13,7 +13,7 @@ A [Morphe](https://morphe.software) add-on that shares what you're listening to 
 ## Install
 
 1. [Add this patch source to Morphe](https://morphe.software/add-source?github=Dyskal/morphe-yt-music-discord-rpc).
-2. Apply it alongside **official Morphe Patches 1.47.0 or later**, including the **Settings** patch.
+2. Apply it alongside **official Morphe Patches 2.0.0 or later**, including the **Settings** patch.
 3. Select **Discord rich presence**, patch a supported YouTube Music APK, and install it.
 
 To receive development builds, enable prereleases in the patch-source settings.
@@ -52,12 +52,12 @@ Activity changes can take a few seconds to appear, and link behavior can vary be
 
 **🎯 Supported versions:**
 
-| 9.40.51 | 9.39.52 | 9.38.51 | 9.20.53 | 9.15.51 |
-| :---: | :---: | :---: | :---: | :---: |
+| 🧪&nbsp;9.43.51 | 🧪&nbsp;9.42.52 | 🧪&nbsp;9.41.52 | 9.30.53 | 9.20.53 | 9.15.51 |
+| :---: | :---: | :---: | :---: | :---: | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
-| [Discord rich presence](#discord-rich-presence) | Adds Discord rich presence, cover art, and clickable music links. Configure it under Morphe → Misc → Discord rich presence. Requires official Morphe Settings (1.47.0+). |  |
+| [Discord rich presence](#discord-rich-presence) | Adds Discord rich presence, cover art, and clickable music links. Configure it under Morphe → Misc → Discord rich presence. Requires official Morphe Settings (2.0.0+). |  |
 
 </details>
 

@@ -16,6 +16,8 @@ The patch bundle is written to `patches/build/libs/patches-*.mpp`. On Linux/macO
 
 Apply the add-on with an official Morphe Patches bundle and run SDK DEX/hierarchy checks:
 
+The current baseline is Morphe Patches **2.0.0**, Patcher **2.0.0**, and patches Gradle plugin **2.1.0-dev.1**, matching that official release. YTM target versions and experimental flags follow the release's compatibility declaration.
+
 ```powershell
 .\gradlew.bat :patches:validateDiscord "-PdiscordApk=C:\path\music.apk" "-PmorpheBundle=C:\path\official-patches.mpp"
 ```

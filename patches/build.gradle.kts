@@ -44,7 +44,7 @@ tasks {
             val apk = providers.gradleProperty("discordApk").orNull
                 ?: throw GradleException("Requires -PdiscordApk=/absolute/path/to/music.apk")
             val official = providers.gradleProperty("morpheBundle").orNull
-                ?: throw GradleException("Requires -PmorpheBundle=/absolute/path/to/official-patches.mpp (1.47.0+)")
+                ?: throw GradleException("Requires -PmorpheBundle=/absolute/path/to/official-patches.mpp (2.0.0+)")
             setArgs(listOfNotNull(apk, official, providers.gradleProperty("discordOutput").orNull))
         }
     }

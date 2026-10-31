@@ -11,6 +11,17 @@ import kotlin.test.assertEquals
 
 class DiscordBundleTest {
     @Test
+    fun `YouTube Music compatibility matches official Morphe Patches 2_0_0`() {
+        val compatibility = discordRpcPatch.compatibility!!.single()
+        assertEquals("com.google.android.apps.youtube.music", compatibility.packageName)
+        assertEquals(app.morphe.patcher.patch.ApkFileType.APK_REQUIRED, compatibility.apkFileType)
+        val targets = compatibility.targets.associateBy { it.version }
+        assertEquals(setOf("9.43.51", "9.42.52", "9.41.52", "9.30.53", "9.20.53", "9.15.51"), targets.keys)
+        assertEquals(setOf("9.43.51", "9.42.52", "9.41.52"), targets.values.filter { it.isExperimental }.map { it.version }.toSet())
+        assertTrue(targets.values.all { it.minSdk == 26 })
+    }
+
+    @Test
     fun `packaged extension retains runtime hooks settings callback and WebSocket dependency`() {
         val stream = javaClass.classLoader.getResourceAsStream("extensions/discord.mpe")
         assertNotNull(stream, "The bundle must include its own Android extension")

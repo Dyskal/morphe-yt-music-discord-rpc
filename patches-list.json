@@ -4,7 +4,7 @@
   "patches": [
     {
       "name": "Discord rich presence",
-      "description": "Adds Discord rich presence, cover art, and clickable music links. Configure it under Morphe → Misc → Discord rich presence. Requires official Morphe Settings (1.47.0+).",
+      "description": "Adds Discord rich presence, cover art, and clickable music links. Configure it under Morphe → Misc → Discord rich presence. Requires official Morphe Settings (2.0.0+).",
       "default": true,
       "category": null,
       "compatiblePackages": [
@@ -12,43 +12,50 @@
           "packageName": "com.google.android.apps.youtube.music",
           "name": "YouTube Music",
           "description": null,
-          "apkFileType": "APK",
+          "apkFileType": "APK_REQUIRED",
           "appIconColor": "#FF0000",
           "signatures": null,
           "targets": [
             {
-              "version": "9.40.51",
+              "version": "9.43.51",
               "versionCodes": null,
-              "isExperimental": false,
-              "minSdk": null,
+              "isExperimental": true,
+              "minSdk": 26,
               "description": null
             },
             {
-              "version": "9.39.52",
+              "version": "9.42.52",
               "versionCodes": null,
-              "isExperimental": false,
-              "minSdk": null,
+              "isExperimental": true,
+              "minSdk": 26,
               "description": null
             },
             {
-              "version": "9.38.51",
+              "version": "9.41.52",
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": 26,
+              "description": null
+            },
+            {
+              "version": "9.30.53",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 26,
               "description": null
             },
             {
               "version": "9.20.53",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 26,
               "description": null
             },
             {
               "version": "9.15.51",
               "versionCodes": null,
               "isExperimental": false,
-              "minSdk": null,
+              "minSdk": 26,
               "description": null
             }
           ]

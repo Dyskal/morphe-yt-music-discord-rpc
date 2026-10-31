@@ -54,7 +54,7 @@ private val discordResourcesPatch = resourcePatch {
 
     finalize {
         if (!get("res/xml/morphe_prefs.xml").exists()) {
-            throw PatchException("Discord RPC requires the official Morphe Settings patch (Morphe Patches 1.47.0 or later). Apply both bundles together.")
+            throw PatchException("Discord RPC requires the official Morphe Settings patch (Morphe Patches 2.0.0 or later). Apply both bundles together.")
         }
     }
 }
@@ -62,17 +62,19 @@ private val discordResourcesPatch = resourcePatch {
 @Suppress("unused")
 val discordRpcPatch = bytecodePatch(
     name = "Discord rich presence",
-    description = "Adds Discord rich presence, cover art, and clickable music links. Configure it under Morphe → Misc → Discord rich presence. Requires official Morphe Settings (1.47.0+).",
+    description = "Adds Discord rich presence, cover art, and clickable music links. Configure it under Morphe → Misc → Discord rich presence. Requires official Morphe Settings (2.0.0+).",
     default = true
 ) {
     dependsOn(discordResourcesPatch)
     compatibleWith(Compatibility(
         name = "YouTube Music",
         packageName = "com.google.android.apps.youtube.music",
-        apkFileType = ApkFileType.APK,
+        apkFileType = ApkFileType.APK_REQUIRED,
         appIconColor = 0xFF0000,
-        targets = listOf("9.40.51", "9.39.52", "9.38.51", "9.20.53", "9.15.51")
-            .map { AppTarget(version = it, isExperimental = false) }
+        targets = listOf("9.43.51", "9.42.52", "9.41.52")
+            .map { AppTarget(version = it, minSdk = 26, isExperimental = true) } +
+                listOf("9.30.53", "9.20.53", "9.15.51")
+                    .map { AppTarget(version = it, minSdk = 26, isExperimental = false) }
     ))
     extendWith("extensions/discord.mpe")
     execute {
