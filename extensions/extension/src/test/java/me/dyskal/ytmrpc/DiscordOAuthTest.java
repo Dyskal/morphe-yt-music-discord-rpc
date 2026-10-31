@@ -116,6 +116,24 @@ public class DiscordOAuthTest {
         }
     }
 
+    @Test public void redirectsDoNotForwardAuthorizationCodesOrRefreshTokens() throws Exception {
+        try (MockWebServer server = new MockWebServer(); MockWebServer destination = new MockWebServer()) {
+            destination.enqueue(token("must-not-be-requested"));
+            DiscordOAuth oauth = new DiscordOAuth(server.url("/token").toString());
+            for (int status : new int[]{302, 307}) {
+                server.enqueue(new MockResponse().setResponseCode(status)
+                        .addHeader("Location", destination.url("/token")));
+                DiscordFailure error = assertThrows(DiscordFailure.class, () -> {
+                    if (status == 302) oauth.exchange(APP, "private-code", "private-verifier");
+                    else oauth.refresh(APP, "private-refresh");
+                });
+                assertEquals(status, error.httpStatus);
+                assertEquals(DiscordFailure.Kind.CONFIGURATION, error.kind);
+            }
+            assertEquals(0, destination.getRequestCount());
+        }
+    }
+
     @Test public void wholeCallTimeoutLimitsSlowResponses() throws Exception {
         try (MockWebServer server = new MockWebServer()) {
             server.enqueue(token("access").setBodyDelay(2, TimeUnit.SECONDS));

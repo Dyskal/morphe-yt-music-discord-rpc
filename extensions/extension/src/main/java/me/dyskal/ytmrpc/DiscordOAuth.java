@@ -35,9 +35,9 @@ public final class DiscordOAuth {
         ERROR_KINDS.put("access_denied", DiscordFailure.Kind.CONFIGURATION);
         ERROR_KINDS.put("unsupported_grant_type", DiscordFailure.Kind.CONFIGURATION);
     }
-    private static final OkHttpClient HTTP = new OkHttpClient.Builder()
+    private static final OkHttpClient HTTP = Http.CLIENT.newBuilder()
             .connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS)
-            .callTimeout(15, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build();
+            .callTimeout(15, TimeUnit.SECONDS).build();
     private final String tokenEndpoint;
     private final OkHttpClient http;
     private final AtomicReference<Call> active = new AtomicReference<>();
@@ -98,11 +98,7 @@ public final class DiscordOAuth {
         if (cancelled.get()) call.cancel();
         try (Response response = call.execute()) {
             if (cancelled.get()) throw cancelledFailure();
-            if (response.body() == null) throw new DiscordFailure(DiscordFailure.Kind.PROTOCOL, "Discord returned an empty OAuth response");
-            String body;
-            try (var input = response.body().byteStream()) {
-                body = Http.readLimited(input, 65_536);
-            }
+            String body = Http.readBody(response, "Discord OAuth");
             if (!response.isSuccessful()) throw httpFailure(response.code(), body, response.header("Retry-After"));
             JSONObject result;
             try { result = new JSONObject(body); }

@@ -55,4 +55,17 @@ public class DiscordExternalAssetsTest {
             assertThrows(DiscordFailure.class, () -> resolver.resolve(APP, "token", "content://local/image"));
         }
     }
+
+    @Test public void redirectsDoNotForwardBearerCredentials() throws Exception {
+        try (MockWebServer server = new MockWebServer(); MockWebServer destination = new MockWebServer()) {
+            destination.enqueue(asset("must-not-be-requested"));
+            server.enqueue(new MockResponse().setResponseCode(307)
+                    .addHeader("Location", destination.url("/external-assets")));
+            DiscordExternalAssets resolver = new DiscordExternalAssets(server.url("/applications/").toString());
+            DiscordFailure error = assertThrows(DiscordFailure.class, () -> resolver.resolve(APP, "private-token", IMAGE));
+            assertEquals(307, error.httpStatus);
+            assertEquals(DiscordFailure.Kind.CONFIGURATION, error.kind);
+            assertEquals(0, destination.getRequestCount());
+        }
+    }
 }

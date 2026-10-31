@@ -17,9 +17,8 @@ import okhttp3.Response;
 
 /** Discord Gateway artwork uses mp:external references, unlike the desktop RPC URL convenience API. */
 public final class DiscordExternalAssets {
-    private static final OkHttpClient HTTP = new OkHttpClient.Builder().connectTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS).callTimeout(10, TimeUnit.SECONDS)
-            .followRedirects(false).followSslRedirects(false).build();
+    private static final OkHttpClient HTTP = Http.CLIENT.newBuilder().connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS).callTimeout(10, TimeUnit.SECONDS).build();
     private static final class Entry {
         final String asset;
         final long retryAt;
@@ -71,11 +70,7 @@ public final class DiscordExternalAssets {
                         ? DiscordFailure.Kind.TRANSIENT : DiscordFailure.Kind.CONFIGURATION,
                         "Discord artwork HTTP " + response.code(), response.code(), delay);
             }
-            if (response.body() == null) throw new DiscordFailure(DiscordFailure.Kind.PROTOCOL, "Discord artwork response was empty");
-            String result;
-            try (var input = response.body().byteStream()) {
-                result = Http.readLimited(input, 65_536);
-            }
+            String result = Http.readBody(response, "Discord artwork");
             String path;
             try { path = new JSONArray(result).getJSONObject(0).getString("external_asset_path"); }
             catch (Exception error) { throw new DiscordFailure(DiscordFailure.Kind.PROTOCOL, "Discord returned invalid artwork JSON"); }

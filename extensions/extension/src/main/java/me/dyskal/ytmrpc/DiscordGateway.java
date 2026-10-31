@@ -28,9 +28,8 @@ public final class DiscordGateway implements AutoCloseable {
     }
     private final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor(r -> thread(r, "Discord gateway"));
     private final ExecutorService tokenWorker = Executors.newSingleThreadExecutor(r -> thread(r, "Discord token"));
-    private static final OkHttpClient HTTP = new OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS)
-            .followRedirects(false).followSslRedirects(false).build();
+    private static final OkHttpClient HTTP = Http.CLIENT.newBuilder()
+            .connectTimeout(15, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS).build();
     private final TokenProvider tokens;
     private final StatusListener status;
     private final String appId, url;
