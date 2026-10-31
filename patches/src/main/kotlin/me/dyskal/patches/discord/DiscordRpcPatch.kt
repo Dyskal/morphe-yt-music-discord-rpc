@@ -8,9 +8,27 @@ import app.morphe.patcher.patch.Compatibility
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.patch.PatchException
+import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 
 private const val EXTENSION_CLASS = "Lme/dyskal/ytmrpc/DiscordRpcPatch;"
+
+internal fun mediaSessionCallbackInstruction(instruction: Instruction, callback: String): String {
+    val register = when (instruction.opcode) {
+        Opcode.INVOKE_VIRTUAL -> (instruction as FiveRegisterInstruction).let {
+            require(it.registerCount == 2) { "Expected MediaSession receiver and one argument" }
+            it.registerD
+        }
+        Opcode.INVOKE_VIRTUAL_RANGE -> (instruction as RegisterRangeInstruction).let {
+            require(it.registerCount == 2) { "Expected MediaSession receiver and one argument" }
+            it.startRegister + 1
+        }
+        else -> throw PatchException("Expected a MediaSession virtual setter call, found ${instruction.opcode}")
+    }
+    return "invoke-static/range {v$register .. v$register}, $EXTENSION_CLASS->$callback"
+}
 
 private val discordResourcesPatch = resourcePatch {
     execute {
@@ -82,16 +100,15 @@ val discordRpcPatch = bytecodePatch(
         MusicApplicationOnCreateFingerprint.method.addInstruction(
             0, "invoke-static/range {p0 .. p0}, $EXTENSION_CLASS->initialize(Landroid/content/Context;)V"
         )
-        MediaSessionSetMetadataFingerprint.let {
-            val index = it.instructionMatches.first().index
-            val register = it.method.getInstruction<FiveRegisterInstruction>(index).registerD
-            it.method.addInstruction(index, "invoke-static {v$register}, $EXTENSION_CLASS->onSetMetadata(Landroid/media/MediaMetadata;)V")
-        }
-        MediaSessionSetPlaybackStateFingerprint.clearMatch()
-        MediaSessionSetPlaybackStateFingerprint.let {
-            val index = it.instructionMatches.first().index
-            val register = it.method.getInstruction<FiveRegisterInstruction>(index).registerD
-            it.method.addInstruction(index, "invoke-static {v$register}, $EXTENSION_CLASS->onSetPlaybackState(Landroid/media/session/PlaybackState;)V")
+        for ((fingerprint, callback) in listOf(
+            MediaSessionSetMetadataFingerprint to "onSetMetadata(Landroid/media/MediaMetadata;)V",
+            MediaSessionSetPlaybackStateFingerprint to "onSetPlaybackState(Landroid/media/session/PlaybackState;)V"
+        )) {
+            // Resolve against the current method: an earlier insertion may have shifted its indexes.
+            fingerprint.clearMatch()
+            val index = fingerprint.instructionMatches.first().index
+            fingerprint.method.addInstruction(index,
+                mediaSessionCallbackInstruction(fingerprint.method.getInstruction(index), callback))
         }
     }
 }

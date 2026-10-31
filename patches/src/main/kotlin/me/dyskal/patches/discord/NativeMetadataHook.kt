@@ -1,18 +1,19 @@
 package me.dyskal.patches.discord
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.BytecodePatchContext
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
-import app.morphe.patcher.util.smali.toInstructions
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 
 /** Discover the queue/renderer references from Music's own explicit-content metadata projection. */
 context(context: BytecodePatchContext)
@@ -39,7 +40,7 @@ internal fun installNativeMetadataHook() {
     require(renderers.size == 2 && renderers.map { it.type }.distinct().size == 1) { "Unable to resolve current queue renderer projections" }
     val first = renderers[0]; val second = renderers[1]
     val name = "dyskal_discordCaptureQueue"
-    val helper = createQueueCaptureHelper(target.definingClass, providerField, providerCall, queueGetter, first, second).toMutable()
+    val helper = createQueueCaptureHelper(target.definingClass, providerField, providerCall, queueGetter, first, second)
     context.mutableClassDefBy(target.definingClass).methods.add(helper)
     target.addInstruction(0, "invoke-direct/range {p0 .. p0}, ${target.definingClass}->$name()V")
 
@@ -58,12 +59,13 @@ internal fun installNativeMetadataHook() {
 internal fun createQueueCaptureHelper(
     owner: String, providerField: FieldReference, providerCall: MethodReference,
     queueGetter: MethodReference, first: FieldReference, second: FieldReference,
-): ImmutableMethod = ImmutableMethod(owner, "dyskal_discordCaptureQueue", emptyList(), "V",
+): MutableMethod = ImmutableMethod(owner, "dyskal_discordCaptureQueue", emptyList(), "V",
         AccessFlags.PRIVATE.value or AccessFlags.FINAL.value, emptySet(), emptySet(),
-        // Two locals plus the instance receiver in v2. Standalone toInstructions() has
-        // no enclosing method context, so it cannot resolve the p0 alias correctly.
-        ImmutableMethodImplementation(3, """
-            iget-object v0, v2, $providerField
+        MutableMethodImplementation(3)
+).toMutable().apply {
+    // Assemble in method context so p0 resolves after the two local registers.
+    addInstructions(0, """
+            iget-object v0, p0, $providerField
             invoke-interface {v0}, $providerCall
             move-result-object v0
             if-eqz v0, :done
@@ -88,4 +90,5 @@ internal fun createQueueCaptureHelper(
             invoke-static {v0}, Lme/dyskal/ytmrpc/DiscordRpcPatch;->onNativeQueueMetadata([B)V
             :done
             return-void
-        """.trimIndent().toInstructions(), emptyList(), emptyList()))
+        """.trimIndent())
+}

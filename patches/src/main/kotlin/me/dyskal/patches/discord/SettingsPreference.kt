@@ -2,6 +2,7 @@ package me.dyskal.patches.discord
 
 import org.w3c.dom.Document
 import org.w3c.dom.Element
+import javax.xml.parsers.DocumentBuilderFactory
 
 internal const val ADD_ON_PREFERENCES = "morphe_addon_prefs.xml"
 internal const val MORPHE_TEXT_PREFERENCE = "app.morphe.extension.shared.settings.preference.ResettableEditTextPreference"
@@ -20,32 +21,10 @@ internal fun addDiscordPreferences(document: Document) {
         (alreadyAdded.item(it) as Element).getAttribute("android:key") == "dyskal_discord_rpc_settings"
     }) return
 
-    val target = document.createElement("screen").apply { setAttribute("key", "morphe_settings_music_screen_9_misc") }
-    val screen = document.createElement("PreferenceScreen").apply {
-        setAttribute("android:key", "dyskal_discord_rpc_settings")
-        setAttribute("android:title", "Discord rich presence")
-        setAttribute("android:summary", "Connection, cover art, and profile headline")
-        setAttribute("android:persistent", "false")
+    val template = requireNotNull(ResourceAnchor.javaClass.getResourceAsStream("/discord/preferences.xml")) {
+        "Missing bundled Discord preferences"
+    }.use {
+        DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(it)
     }
-    fun row(tag: String, key: String, title: String): Element = document.createElement(tag).apply {
-        setAttribute("android:key", key)
-        setAttribute("android:title", title)
-        setAttribute("android:persistent", "false")
-        screen.appendChild(this)
-    }
-    row(MORPHE_TEXT_PREFERENCE, "dyskal_discord_application_id", "Discord application ID").apply {
-        setAttribute("android:dialogTitle", "Discord application ID")
-        setAttribute("android:inputType", "number")
-        setAttribute("android:summary", "Defaults to Dyskal's application; changing it requires signing in again")
-    }
-    row("Preference", "dyskal_discord_connect", "Connect with Discord")
-    row("Preference", "dyskal_discord_cancel", "Cancel sign-in")
-    row("SwitchPreference", "dyskal_discord_enabled", "Share currently playing music")
-    row(MORPHE_LIST_PREFERENCE, "dyskal_discord_headline", "Profile headline")
-    row("Preference", "dyskal_discord_disconnect", "Disconnect and forget account")
-    row("Preference", "dyskal_discord_about", "About and licenses")
-    row("me.dyskal.ytmrpc.DiscordPreferences", "dyskal_discord_status", "Connection status").apply {
-        setAttribute("android:selectable", "false")
-    }
-    target.appendChild(screen); root.appendChild(target)
+    root.appendChild(document.importNode(template.documentElement, true))
 }
