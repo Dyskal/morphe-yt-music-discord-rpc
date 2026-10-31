@@ -1,4 +1,4 @@
-rootProject.name = "morphe-patches-template"
+rootProject.name = "morphe-yt-music-discord-rpc"
 
 pluginManagement {
     repositories {
@@ -17,5 +17,12 @@ pluginManagement {
 }
 
 plugins {
-    id("app.morphe.patches") version "1.3.4"
+    id("app.morphe.patches") version "2.1.0-dev.1"
+}
+
+settings {
+    extensions {
+        defaultNamespace = "me.dyskal.ytmrpc"
+        proguardFiles(rootProject.projectDir.resolve("extensions/proguard-rules.pro").toString())
+    }
 }

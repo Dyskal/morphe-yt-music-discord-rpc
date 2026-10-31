@@ -1,3 +1,7 @@
+### Morphe
+# Private key that signs the patches file
+morphe-signing.key
+
 ### Java template
 # Compiled class file
 *.class
@@ -128,3 +132,4 @@ node_modules/
 # Ignore IDEA files
 .idea/
 local.properties
+/verification/
