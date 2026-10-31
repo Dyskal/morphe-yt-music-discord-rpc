@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "1.0.0-dev.9",
+  "version": "1.0.0-dev.10",
   "patches": [
     {
       "name": "Discord rich presence",
@@ -15,6 +15,7 @@
           "apkFileType": "APK_REQUIRED",
           "appIconColor": "#FF0000",
           "signatures": null,
+          "formFactor": "MOBILE",
           "targets": [
             {
               "version": "9.43.51",
