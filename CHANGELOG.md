@@ -1,3 +1,13 @@
+## [2.0.0-alpha.1](https://github.com/Dyskal/morphe-yt-music-discord-rpc/compare/v1.0.0...v2.0.0-alpha.1) (2026-11-13)
+
+### ⚠ BREAKING CHANGES
+
+* Requires the official Discord Android app installed and signed in. OAuth, Gateway connections, and token storage are removed; sharing must be explicitly enabled in the new local-only settings.
+
+### ✨ New Features
+
+* replace OAuth presence with local Discord RPC ([c427e97](https://github.com/Dyskal/morphe-yt-music-discord-rpc/commit/c427e97d544c503cf5e4c12edbb1879ab317a2f1))
+
 ## 1.0.0 (2026-10-31)
 
 ### ✨ New Features
