@@ -3,24 +3,22 @@ package me.dyskal.ytmrpc;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/** Gateway timestamps are milliseconds; RPC's desktop seconds must not be used here. */
+/** Local RPC activities; the observed Android service accepts millisecond timestamps. */
 public final class DiscordPresence {
     private DiscordPresence() { }
 
-    public static JSONObject track(String appId, DiscordTrack track, boolean artistHeadline, String artwork,
+    public static JSONObject track(DiscordTrack track, boolean artistHeadline,
                                    long duration, long position, float speed, long now) throws Exception {
-        JSONObject activity = new JSONObject().put("application_id", appId)
-                .put("name", truncate(artistHeadline && !track.artist.isEmpty() ? track.artist : "YouTube Music"))
+        JSONObject activity = new JSONObject().put("name", truncate(artistHeadline && !track.artist.isEmpty() ? track.artist : "YouTube Music"))
                 .put("status_display_type", 0).put("type", 2).put("details", truncate(track.title));
         if (track.songUrl != null) {
             activity.put("details_url", track.songUrl);
-            activity.put("buttons", new JSONArray().put("Listen on YouTube Music"));
-            activity.put("metadata", new JSONObject().put("button_urls", new JSONArray().put(track.songUrl)));
+            activity.put("buttons", new JSONArray().put(new JSONObject().put("label", "Listen on YouTube Music").put("url", track.songUrl)));
         }
         if (!track.artist.isEmpty()) activity.put("state", truncate(track.artist));
         if (track.artistUrl != null) activity.put("state_url", track.artistUrl);
-        if (artwork != null) {
-            activity.put("assets", new JSONObject().put("large_image", artwork)
+        if (track.artworkUrl != null) {
+            activity.put("assets", new JSONObject().put("large_image", track.artworkUrl)
                     .put("large_text", truncate(track.album.isEmpty() ? track.title : track.album)));
             // The third listening-activity line is large_text; Discord has no independent URL for it.
             if (track.albumUrl != null) activity.getJSONObject("assets").put("large_url", track.albumUrl);
@@ -33,10 +31,9 @@ public final class DiscordPresence {
         return activity;
     }
 
-    public static String update(JSONObject activity) throws Exception {
-        return new JSONObject().put("op", 3).put("d", new JSONObject()
-                .put("since", JSONObject.NULL).put("afk", false).put("status", "online")
-                .put("activities", activity == null ? new JSONArray() : new JSONArray().put(activity))).toString();
+    static String frame(JSONObject activity, int pid, String nonce) throws Exception {
+        return new JSONObject().put("cmd", "SET_ACTIVITY").put("nonce", nonce)
+                .put("args", new JSONObject().put("pid", pid).put("activity", activity == null ? JSONObject.NULL : activity)).toString();
     }
 
     private static String truncate(String text) {

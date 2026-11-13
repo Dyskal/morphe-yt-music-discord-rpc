@@ -42,8 +42,8 @@ public class DiscordNativeMetadataTest {
         DiscordTrack track = new DiscordTrack("Song", "LE SSERAFIM", "CRAZY", null, null).enrich(data, VIDEO);
         assertEquals("CRAZY", track.album);
         assertEquals("https://music.youtube.com/browse/" + ALBUM, track.albumUrl);
-        assertEquals(track.albumUrl, DiscordPresence.track("1559278040175878146", track, true,
-                "mp:external/cover", 0, -1, 1, 0).getJSONObject("assets").getString("large_url"));
+        assertEquals(track.albumUrl, DiscordPresence.track(track, true,
+                0, -1, 1, 0).getJSONObject("assets").getString("large_url"));
     }
 
     @Test public void menuServicePayloadsOtherTracksAndConflictingAlbumsAreNotUsed() throws Exception {

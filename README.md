@@ -2,6 +2,22 @@
 
 A [Morphe](https://morphe.software) add-on that shares what you're listening to on YouTube Music as your Discord activity.
 
+## Experimental v2: local Discord RPC
+
+This branch publishes **2.0.0-alpha.N** prereleases of the local-only prototype. In Morphe's patch sources, add this JSON URL as a separate source:
+
+```text
+https://raw.githubusercontent.com/Dyskal/morphe-yt-music-discord-rpc/refs/heads/experiment/local-rpc-v2/patches-bundle.json
+```
+
+Disable the existing Discord RPC source while testing this one; do not apply both versions together. Apply this source alongside official Morphe Settings, then:
+
+1. Open the official Discord Android app and sign in there. This add-on does not ask for account permissions in local mode.
+2. In YTM → **Settings → Morphe → Misc → Discord rich presence**, enable **Share currently playing music** and play a song.
+3. Check **Connection status** for connection or rejection errors; use **Connect / retry local Discord** to retry.
+
+Sharing starts off and must be enabled explicitly. Only the official `com.discord` app is supported. Artwork, listening activities, links, and background behavior still need real-device verification. OAuth, browser sign-in, token storage, and Gateway connections have been removed; there is no fallback if local RPC is unavailable.
+
 ## Features
 
 - Song title, artist, album name, and cover art.
@@ -12,33 +28,32 @@ A [Morphe](https://morphe.software) add-on that shares what you're listening to 
 
 ## Install
 
-1. [Add this patch source to Morphe](https://morphe.software/add-source?github=Dyskal/morphe-yt-music-discord-rpc).
+1. Add the experimental JSON source above to Morphe. The normal repository source still follows the stable/dev channels, not this branch.
 2. Apply it alongside **official Morphe Patches 2.0.0 or later**, including the **Settings** patch.
 3. Select **Discord rich presence**, patch a supported YouTube Music APK, and install it.
 
-To receive development builds, enable prereleases in the patch-source settings.
+This direct JSON source follows the experimental branch automatically; the normal source's prerelease toggle does not select it.
 
 ## Connect to Discord
 
 1. Open YouTube Music → **Settings → Morphe → Misc → Discord rich presence**.
-2. Tap **Connect with Discord** and authorize in the Discord app, or in a browser tab if Discord isn't available.
+2. Open the official Discord Android app and sign in there, then enable **Share currently playing music** in YTM.
 3. Enable activity sharing in Discord and play some music.
 
 The default Discord application is ready to use; no application ID or developer account is required.
 
 ### Settings
 
-- **Share currently playing music:** turn sharing on or off without signing out.
+- **Share currently playing music:** turn sharing on, or turn it off to clear presence and disconnect.
 - **Profile headline:** show the artist name or **YouTube Music**.
-- **Reconnect:** reconnect using your saved sign-in.
-- **Disconnect and forget account:** sign out and remove saved credentials.
+- **Connect / retry local Discord:** enable sharing and retry the local connection.
 - **Discord application ID:** optionally use your own application; see [custom application setup](CONTRIBUTING.md#custom-discord-application).
 
-Changes take effect without repatching. Sign-in credentials are encrypted on your device.
+Changes take effect without repatching. This add-on never signs in to your account or reads/stores Discord credentials. V2 uses separate settings, so v1's sharing flag does not automatically enable local sharing.
 
 ## Troubleshooting
 
-Check **Connection status** on the Discord settings page if sharing or artwork stops working. Confirm Discord's activity sharing is enabled, then try **Reconnect**. If asked to sign in again, disconnect and reconnect your account.
+Check **Connection status** if sharing stops working. Open/update the official Discord app, confirm you are signed in there and activity sharing is enabled, then tap **Connect / retry local Discord**. A connection acknowledgement does not guarantee that Discord has published the activity.
 
 Activity changes can take a few seconds to appear, and link behavior can vary between Discord clients.
 

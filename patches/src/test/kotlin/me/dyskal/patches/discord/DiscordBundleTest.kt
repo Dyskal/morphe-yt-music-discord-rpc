@@ -22,15 +22,14 @@ class DiscordBundleTest {
     }
 
     @Test
-    fun `packaged extension retains runtime hooks settings callback and WebSocket dependency`() {
+    fun `packaged extension retains local hooks and settings without old transport dependencies`() {
         val stream = javaClass.classLoader.getResourceAsStream("extensions/discord.mpe")
         assertNotNull(stream, "The bundle must include its own Android extension")
         val dex = stream.use { DexBackedDexFile(Opcodes.getDefault(), ByteBuffer.wrap(it.readBytes())) }
         val classes = dex.classes.associateBy { it.type }
-        for (type in listOf("DiscordOAuthActivity")) {
-            val activity = classes["Lme/dyskal/ytmrpc/$type;"]
-            assertNotNull(activity, "R8 must retain manifest-injected $type")
-            assertTrue(activity.methods.any { it.name == "onCreate" })
+        for (type in listOf("DiscordOAuthActivity", "DiscordOAuth", "DiscordAuthorization", "DiscordAuthLauncher",
+            "DiscordTokenStore", "DiscordGateway", "DiscordExternalAssets", "Http")) {
+            assertTrue(!classes.containsKey("Lme/dyskal/ytmrpc/$type;"), "Local-only extension must not retain $type")
         }
         val controls = classes["Lme/dyskal/ytmrpc/DiscordPreferences;"]
         assertNotNull(controls)
@@ -42,7 +41,14 @@ class DiscordBundleTest {
         for (name in listOf("initialize", "getApplicationId", "onSetMetadata", "onSetPlaybackState", "onNativeVideoId", "onNativeQueueMetadata")) {
             assertTrue(hooks.methods.any { it.name == name })
         }
-        assertTrue(classes.containsKey("Lokhttp3/OkHttpClient;"))
+        assertTrue(classes.keys.none { it.startsWith("Lokhttp3/") || it.startsWith("Lokio/") || it.startsWith("Landroidx/browser/") })
+        assertTrue(classes.keys.none { it.startsWith("Lkotlin/") }, "Unused Kotlin runtime must be stripped from the Java-only extension")
+        for (type in listOf("DiscordLocalRpc", "DiscordLocalBinder", "DiscordPresence")) {
+            val local = classes["Lme/dyskal/ytmrpc/$type;"]
+            assertNotNull(local, "R8 must retain the local RPC prototype")
+            assertTrue(local.methods.none { com.android.tools.smali.dexlib2.AccessFlags.NATIVE.isSet(it.accessFlags) })
+        }
+        assertTrue(classes.keys.none { it.startsWith("Lcom/discord/socialsdk/") }, "Do not bundle proprietary SDK classes")
         assertTrue(classes.keys.none { it.startsWith("Lapp/morphe/extension/") }, "Add-on must reuse the host's themed UI, not bundle duplicate Morphe classes")
     }
 

@@ -21,7 +21,6 @@ public final class DiscordPreferences extends Preference {
     private EditTextPreference applicationId;
     private ListPreference headline;
     private SwitchPreference sharing;
-    private Preference connect, cancel, disconnect;
     private boolean bound;
     private final Runnable refresh = this::render;
 
@@ -44,12 +43,9 @@ public final class DiscordPreferences extends Preference {
         applicationId = (EditTextPreference) manager.findPreference("dyskal_discord_application_id");
         headline = (ListPreference) manager.findPreference("dyskal_discord_headline");
         sharing = (SwitchPreference) manager.findPreference("dyskal_discord_enabled");
-        connect = manager.findPreference("dyskal_discord_connect");
-        cancel = manager.findPreference("dyskal_discord_cancel");
-        disconnect = manager.findPreference("dyskal_discord_disconnect");
+        Preference connect = manager.findPreference("dyskal_discord_connect");
         Preference about = manager.findPreference("dyskal_discord_about");
-        if (applicationId == null || headline == null || sharing == null || connect == null
-                || cancel == null || disconnect == null || about == null) {
+        if (applicationId == null || headline == null || sharing == null || connect == null || about == null) {
             setSummary("Discord preference rows are missing; reapply the official Settings and Discord patches together"); return;
         }
         applicationId.getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
@@ -57,7 +53,7 @@ public final class DiscordPreferences extends Preference {
         applicationId.setOnPreferenceChangeListener((preference, value) -> {
             String id = value == null ? "" : value.toString().trim();
             if (!DiscordRpcPatch.setApplicationId(id)) {
-                Toast.makeText(getContext(), "Enter a valid 17–20 digit application ID", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Enter a valid Discord application ID", Toast.LENGTH_SHORT).show();
             }
             return false; // The controller persists it and emits an update; do not write to Morphe's shared preference file.
         });
@@ -70,10 +66,8 @@ public final class DiscordPreferences extends Preference {
             DiscordRpcPatch.setSharingEnabled(Boolean.TRUE.equals(value)); return false;
         });
         connect.setOnPreferenceClickListener(preference -> {
-            DiscordRpcPatch.authorize(getContext(), DiscordRpcPatch.getApplicationId()); render(); return true;
+            DiscordRpcPatch.reconnect(); render(); return true;
         });
-        cancel.setOnPreferenceClickListener(preference -> { DiscordRpcPatch.cancelAuthorization(); render(); return true; });
-        disconnect.setOnPreferenceClickListener(preference -> { DiscordRpcPatch.disconnect(getContext().getApplicationContext()); render(); return true; });
         about.setOnPreferenceClickListener(preference -> { showAbout(); return true; });
         bound = true;
         DiscordRpcPatch.addSettingsListener(refresh);
@@ -82,25 +76,24 @@ public final class DiscordPreferences extends Preference {
 
     private void render() {
         if (!bound) return;
-        boolean busy = DiscordRpcPatch.isAuthorizing();
         applicationId.setText(DiscordRpcPatch.getApplicationId());
         applicationId.setSummary(DiscordRpcPatch.getApplicationId());
-        applicationId.setEnabled(!busy);
         headline.setValue(DiscordRpcPatch.usesArtistHeadline() ? "artist" : "application");
         headline.setSummary(DiscordRpcPatch.usesArtistHeadline() ? "Artist" : "YouTube Music");
         sharing.setChecked(DiscordRpcPatch.isSharingEnabled());
-        sharing.setEnabled(DiscordRpcPatch.isAuthorized() && !busy);
-        connect.setEnabled(!busy);
-        connect.setTitle(DiscordRpcPatch.isAuthorized() ? "Reconnect" : "Connect with Discord");
-        cancel.setEnabled(busy);
-        disconnect.setEnabled(DiscordRpcPatch.isAuthorized() || busy);
         setSummary(DiscordRpcPatch.status());
     }
 
     private void showAbout() {
         String text;
         try (var input = getContext().getAssets().open("dyskal_discord_notices.txt")) {
-            text = Http.readLimited(input, 262_144);
+            java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[4096]; int count;
+            while ((count = input.read(buffer)) != -1) {
+                if (count > 262_144 - output.size()) throw new java.io.IOException("Notices exceed size limit");
+                output.write(buffer, 0, count);
+            }
+            text = output.toString("UTF-8");
         } catch (Exception error) {
             DiscordDiagnostics.failure("Read notices", error);
             text = "Notices unavailable. Source: https://github.com/Dyskal/morphe-yt-music-discord-rpc";

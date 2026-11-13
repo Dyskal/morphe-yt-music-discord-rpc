@@ -41,32 +41,12 @@ private val discordResourcesPatch = resourcePatch {
         document("AndroidManifest.xml").use { manifest ->
             val queries = manifest.getElementsByTagName("queries").item(0)
                 ?: manifest.createElement("queries").also { manifest.documentElement.appendChild(it) }
+            queries.appendChild(manifest.createElement("package").apply { setAttribute("android:name", "com.discord") })
             queries.appendChild(manifest.createElement("intent").apply {
                 appendChild(manifest.createElement("action").apply {
-                    setAttribute("android:name", "android.support.customtabs.action.CustomTabsService")
+                    setAttribute("android:name", "com.discord.socialsdk.rpc.IDiscordRpcService")
                 })
             })
-            val application = manifest.getElementsByTagName("application").item(0)
-            val activity = manifest.createElement("activity").apply {
-                setAttribute("android:name", "me.dyskal.ytmrpc.DiscordOAuthActivity")
-                setAttribute("android:exported", "true")
-                setAttribute("android:excludeFromRecents", "true")
-                setAttribute("android:theme", "@android:style/Theme.Translucent.NoTitleBar")
-            }
-            val filter = manifest.createElement("intent-filter")
-            fun child(tag: String, attribute: String, value: String) {
-                filter.appendChild(manifest.createElement(tag).apply { setAttribute(attribute, value) })
-            }
-            child("action", "android:name", "android.intent.action.VIEW")
-            child("category", "android:name", "android.intent.category.DEFAULT")
-            child("category", "android:name", "android.intent.category.BROWSABLE")
-            filter.appendChild(manifest.createElement("data").apply {
-                setAttribute("android:scheme", "ytmdiscord")
-                setAttribute("android:host", "oauth2")
-                setAttribute("android:path", "/callback")
-            })
-            activity.appendChild(filter)
-            application.appendChild(activity)
         }
     }
 

@@ -27,11 +27,12 @@ class DiscordSettingsPreferenceTest {
         assertEquals(0, screen.getElementsByTagName("ListPreference").length)
         assertEquals(0, screen.getElementsByTagName("intent").length)
         val rows = (0 until screen.childNodes.length).mapNotNull { screen.childNodes.item(it) as? Element }
-        assertEquals(listOf("application_id", "connect", "cancel", "enabled", "headline", "disconnect", "about", "status")
+        assertEquals(listOf("application_id", "connect", "enabled", "headline", "about", "status")
             .map { "dyskal_discord_$it" }, rows.map { it.getAttribute("android:key") })
         assertTrue(rows.all { it.getAttribute("android:title").isNotEmpty() })
-        assertEquals("number", rows.first().getAttribute("android:inputType"))
-        assertEquals("Discord application ID", rows.first().getAttribute("android:dialogTitle"))
+        val applicationId = rows.single { it.getAttribute("android:key") == "dyskal_discord_application_id" }
+        assertEquals("number", applicationId.getAttribute("android:inputType"))
+        assertEquals("Discord application ID", applicationId.getAttribute("android:dialogTitle"))
         assertEquals("false", rows.last().getAttribute("android:selectable"))
         for (i in 0 until screen.childNodes.length) {
             val row = screen.childNodes.item(i) as? Element ?: continue

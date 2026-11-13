@@ -4,6 +4,11 @@
     {
       "name": "dev",
       "prerelease": true
+    },
+    {
+      "name": "experiment/local-rpc-v2",
+      "channel": "local-rpc",
+      "prerelease": "alpha"
     }
   ],
   "plugins": [
